@@ -1,8 +1,8 @@
-import { stackServerApp } from "../../../stack/server";
 import Signout from "@/app/_components/auth/Signout";
+import { getUserWithMetadata } from "@/server/auth/auth.data";
 
 export default async function DashboardPage() {
-  const user = await stackServerApp.getUser();
+  const userWithMetadata = await getUserWithMetadata();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
@@ -13,7 +13,7 @@ export default async function DashboardPage() {
               Welcome to MailEye
             </h1>
             <p className="text-xl text-gray-300 mb-6">
-              Hello, {user?.displayName || user?.primaryEmail || "User"}!
+              Hello, {userWithMetadata?.displayName || userWithMetadata?.primaryEmail || "User"}!
             </p>
           </div>
 
