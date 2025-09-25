@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { UserWithMetadata } from "@/server/auth/auth.data"
 import Link from "next/link"
+import { useUser } from "@stackframe/stack"
 
 interface UserDropdownProps {
   user: UserWithMetadata
@@ -19,9 +20,11 @@ interface UserDropdownProps {
 
 export function UserDropdown({ user }: UserDropdownProps) {
 
+  const user2 = useUser()
+  if (!user2) return null;
   const handleSignOut = async () => {
     try {
-      user.signOut()
+      user2.signOut()
     } catch (error) {
       console.error('Sign out error:', error)
     }

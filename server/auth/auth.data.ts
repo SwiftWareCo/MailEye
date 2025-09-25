@@ -23,7 +23,6 @@ export type UserWithMetadata = {
   clientMetadata: Record<string, boolean | string | number | null>;
   serverMetadata: Record<string, boolean | string | number | null>;
   clientReadOnlyMetadata: Record<string, boolean | string | number | null>;
-  signOut: () => Promise<void>;
 };
 
 // Core Stack Auth user data access
@@ -56,7 +55,6 @@ export async function getUserWithMetadata(): Promise<UserWithMetadata | null> {
       clientMetadata: user.clientMetadata || {},
       serverMetadata: user.serverMetadata || {},
       clientReadOnlyMetadata: user.clientReadOnlyMetadata || {},
-      signOut: user.signOut,
     };
   } catch (error) {
     console.error('Error getting user with metadata:', error);
