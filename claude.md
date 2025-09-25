@@ -62,7 +62,7 @@ This project uses an adaptation of Amazon's **Kiro System** for structured featu
 app/
 ├── (auth)/ # Authentication pages
 ├── (dashboard)/ # Dashboard pages
-├── _components/ # Shared UI components (organized by feature)
+├── components/ # Shared UI components (organized by feature)
 │   ├── auth/
 │   │   ├── Signout.tsx
 │   │   └── AuthProvider.tsx
@@ -102,7 +102,7 @@ stack/ # Stack Auth configuration
 ### Component Organization Guidelines
 
 #### Component Placement Rules:
-1. **All reusable components go in `app/_components/`**: Never create components directly in page directories
+1. **All reusable components go in `components/`**: Never create components directly in page directories
 2. **Organize by feature**: Group related components in feature-specific folders (`auth/`, `settings/`, `dashboard/`)
 3. **Client vs Server separation**:
    - Use `'use client'` directive for components with interactivity (onClick, useState, etc.)
@@ -111,7 +111,7 @@ stack/ # Stack Auth configuration
 
 #### Component Structure:
 ```
-app/_components/
+components/
 ├── auth/           # Authentication-related components
 ├── settings/       # Settings and user preferences
 ├── dashboard/      # Dashboard-specific components
@@ -128,19 +128,29 @@ app/_components/
   - Form handling with client-side validation
   - Interactive UI elements
 - **Mixed Approach**: Pass server data to client components as props
+- **Server-Only Functions**: Never call `server/` functions directly from client components - fetch data in parent server component and pass as props
 
 #### Import/Export Patterns:
-- Use absolute imports: `@/app/_components/settings/SettingsForm`
+- Use absolute imports: `@/components/settings/SettingsForm`
 - Export components as default exports
 - Co-locate types and interfaces with components when component-specific
 
 ### Design System Guidelines
+
+#### shadcn/ui Integration:
+- **UI Library**: Project uses shadcn/ui with "new-york" style variant
+- **Component Location**: All shadcn components are installed in `/components/ui/`
+- **Installation**: Use `npx shadcn@latest add [component-name]` to add new components
+- **Customization**: Components use CSS variables for theming and can be customized via `app/globals.css`
+- **Icons**: Lucide React is the icon library (`import { IconName } from "lucide-react"`)
+- **Aliases**: Components use `@/components/ui/[component]` import paths
 
 #### Theme & Styling:
 - **Dark Theme Primary**: Application uses a dark theme as the primary design approach
 - **Color Palette**: Focus on dark backgrounds with accent colors for contrast and visual hierarchy
 - **Stack Auth Integration**: Custom styling applied to Stack Auth components to match dark theme
 - **Tailwind CSS**: Utilize dark mode variants and custom dark color schemes
+- **shadcn Components**: Always prefer shadcn/ui components over custom implementations for consistency
 
 #### Exact Color Scheme:
 ```javascript

@@ -2,7 +2,6 @@
 
 import { stackServerApp } from '../../stack/server';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
 
 // Type definitions for metadata updates
 export type ClientMetadataUpdate = {
