@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { StackProvider, StackTheme } from '@stackframe/stack';
 import { stackServerApp } from '../stack/server';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
 
 const theme = {
@@ -66,6 +67,7 @@ export default function RootLayout({
             theme={theme}
           >
             {children}
+            <Toaster />
           </StackTheme>
         </StackProvider>
       </body>

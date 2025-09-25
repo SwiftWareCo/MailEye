@@ -7,9 +7,9 @@ import { eq, desc } from 'drizzle-orm';
 
 // Stack Auth metadata type definitions
 export type StackAuthUserMetadata = {
-  clientMetadata: Record<string, string>;
-  serverMetadata: Record<string, string>;
-  clientReadOnlyMetadata: Record<string, string>;
+  clientMetadata: Record<string, boolean | string | number | null>;
+  serverMetadata: Record<string, boolean | string | number | null>;
+  clientReadOnlyMetadata: Record<string, boolean | string | number | null>;
 };
 
 // Extended user type with metadata
@@ -20,9 +20,9 @@ export type UserWithMetadata = {
   primaryEmailVerified: boolean;
   profileImageUrl: string | null;
   signedUpAt: Date | null;
-  clientMetadata: Record<string, string>;
-  serverMetadata: Record<string, string>;
-  clientReadOnlyMetadata: Record<string, string>;
+  clientMetadata: Record<string, boolean | string | number | null>;
+  serverMetadata: Record<string, boolean | string | number | null>;
+  clientReadOnlyMetadata: Record<string, boolean | string | number | null>;
 };
 
 // Core Stack Auth user data access
@@ -99,14 +99,10 @@ export async function getUserPreferences() {
       return null;
     }
 
-    // Extract common preferences from clientMetadata
+    // Extract language and timezone preferences from clientMetadata
     const preferences = {
-      theme: user.clientMetadata.theme || 'dark',
-      emailNotifications: user.clientMetadata.emailNotifications !== false, // default true
-      pushNotifications: user.clientMetadata.pushNotifications !== false, // default true
       language: user.clientMetadata.language || 'en',
       timezone: user.clientMetadata.timezone || 'UTC',
-      ...user.clientMetadata.preferences, // allow additional custom preferences
     };
 
     return preferences;
@@ -131,12 +127,66 @@ export async function getUserSubscriptionInfo() {
       status: user.clientReadOnlyMetadata.subscriptionStatus || 'inactive',
       expiresAt: user.clientReadOnlyMetadata.subscriptionExpiresAt,
       features: user.clientReadOnlyMetadata.subscriptionFeatures || [],
-      ...user.clientReadOnlyMetadata.subscription, // allow additional subscription data
+      ...user.clientReadOnlyMetadata.subscription as unknown as Record<string, boolean | string | number | null>, // allow additional subscription data
     };
 
     return subscription;
   } catch (error) {
     console.error('Error getting user subscription info:', error);
     return null;
+  }
+}
+
+// Server-side function to check if user needs onboarding
+export async function requireOnboarding(): Promise<{ needsOnboarding: boolean; user: UserWithMetadata | null }> {
+  try {
+    const user = await getUserWithMetadata();
+
+    if (!user) {
+      return { needsOnboarding: false, user: null };
+    }
+
+    const onboardingCompleted = user.clientReadOnlyMetadata?.onboardingCompleted;
+
+    return {
+      needsOnboarding: !onboardingCompleted,
+      user
+    };
+  } catch (error) {
+    console.error('Error checking onboarding status:', error);
+    return { needsOnboarding: false, user: null };
+  }
+}
+
+// Optimized function for settings page - combines user auth, onboarding check, and preferences in one call
+export async function getSettingsPageData(): Promise<{
+  needsOnboarding: boolean;
+  user: UserWithMetadata | null;
+  preferences: { language: string; timezone: string } | null;
+}> {
+  try {
+    const user = await getUserWithMetadata();
+
+    if (!user) {
+      return { needsOnboarding: false, user: null, preferences: null };
+    }
+
+    const onboardingCompleted = user.clientReadOnlyMetadata?.onboardingCompleted;
+    const needsOnboarding = !onboardingCompleted;
+
+    // Extract preferences from the same user object to avoid another API call
+    const preferences = {
+      language: user.clientMetadata.language || 'en',
+      timezone: user.clientMetadata.timezone || 'UTC',
+    };
+
+    return {
+      needsOnboarding,
+      user,
+      preferences: preferences as { language: string; timezone: string }
+    };
+  } catch (error) {
+    console.error('Error getting settings page data:', error);
+    return { needsOnboarding: false, user: null, preferences: null };
   }
 }

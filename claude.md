@@ -59,18 +59,38 @@ This project uses an adaptation of Amazon's **Kiro System** for structured featu
 
 #### Project Structure:
 ```
-src/
-├── app/ # App Router
-├── components/ # Shared UI components
-├── server/ # Data and action layers
+app/
+├── (auth)/ # Authentication pages
+├── (dashboard)/ # Dashboard pages
+├── _components/ # Shared UI components (organized by feature)
 │   ├── auth/
-│   │   ├── auth.data.ts
-│   │   └── auth.actions.ts
+│   │   ├── Signout.tsx
+│   │   └── AuthProvider.tsx
+│   ├── settings/
+│   │   ├── SettingsForm.tsx
+│   │   └── SecurityActions.tsx
 │   ├── dashboard/
-│   │   ├── dashboard.data.ts
-│   │   └── dashboard.actions.ts
-├── lib/ # Utilities
-└── hooks/ # Custom React hooks
+│   │   ├── MetricsCard.tsx
+│   │   └── ActivityFeed.tsx
+│   └── ui/ # Basic UI primitives
+├── handler/ # Stack Auth handlers
+├── layout.tsx # Root layout
+├── page.tsx # Home page
+server/ # Data and action layers
+├── auth/
+│   ├── auth.data.ts
+│   └── auth.actions.ts
+├── dashboard/
+│   ├── dashboard.data.ts
+│   └── dashboard.actions.ts
+lib/ # Utilities and database
+├── db/
+│   ├── schema.ts
+│   └── index.ts
+├── utils.ts
+stack/ # Stack Auth configuration
+├── client.tsx
+└── server.tsx
 ```
 
 #### Key Principles:
@@ -78,6 +98,41 @@ src/
 - **Client/Server Component clarity**: Explicitly choose based on needs
 - **TypeScript everywhere**: Full type safety across data and action layers
 - **Performance first**: Server Components for initial renders, TanStack Query for client interactions
+
+### Component Organization Guidelines
+
+#### Component Placement Rules:
+1. **All reusable components go in `app/_components/`**: Never create components directly in page directories
+2. **Organize by feature**: Group related components in feature-specific folders (`auth/`, `settings/`, `dashboard/`)
+3. **Client vs Server separation**:
+   - Use `'use client'` directive for components with interactivity (onClick, useState, etc.)
+   - Keep Server Components as default for data fetching and static content
+   - Extract client-side functionality into separate components when needed
+
+#### Component Structure:
+```
+app/_components/
+├── auth/           # Authentication-related components
+├── settings/       # Settings and user preferences
+├── dashboard/      # Dashboard-specific components
+├── campaigns/      # Campaign management components
+├── ui/            # Basic UI primitives (buttons, inputs, cards)
+└── layout/        # Layout and navigation components
+```
+
+#### Client/Server Component Guidelines:
+- **Server Component**: Default for pages and data-heavy components
+- **Client Component**: Required for:
+  - Event handlers (onClick, onSubmit, etc.)
+  - State management (useState, useEffect)
+  - Form handling with client-side validation
+  - Interactive UI elements
+- **Mixed Approach**: Pass server data to client components as props
+
+#### Import/Export Patterns:
+- Use absolute imports: `@/app/_components/settings/SettingsForm`
+- Export components as default exports
+- Co-locate types and interfaces with components when component-specific
 
 ### Design System Guidelines
 

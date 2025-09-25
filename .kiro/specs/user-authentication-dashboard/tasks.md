@@ -85,38 +85,29 @@ This document breaks down the implementation of User Authentication & Dashboard 
   - **Dependencies**: Task 1.3, Task 2.1
   - **Status**: COMPLETED ✅
 
-- [ ] **2.3** Create Auth Actions Layer (Server Actions) - **UPDATED**
+- [x] **2.3** Create Auth Actions Layer (Server Actions) - **UPDATED**
   - **Description**: Implement Server Actions for Stack Auth metadata management and user preference updates using Stack Auth APIs.
   - **Deliverables**:
-    - `/server/auth/auth.actions.ts` with updateUserMetadata, updateUserPreferences actions
-    - Server Actions using Stack Auth SDK for metadata updates
-    - Proper revalidatePath calls for cache invalidation
-    - Type-safe metadata handling (clientMetadata, serverMetadata, clientReadOnlyMetadata)
+    - `/server/auth/auth.actions.ts` with updateUserMetadata, updateUserPreferences actions ✅
+    - Server Actions using Stack Auth SDK for metadata updates ✅
+    - Proper revalidatePath calls for cache invalidation ✅
+    - Type-safe metadata handling (clientMetadata, serverMetadata, clientReadOnlyMetadata) ✅
   - **Requirements**: User Metadata Management - update preferences, settings via Stack Auth metadata
   - **Estimated Effort**: 2 hours
   - **Dependencies**: Task 2.2
+  - **Status**: COMPLETED ✅
 
-- [ ] **2.4** Implement Account Settings System - **NEW**
+- [x] **2.4** Implement Account Settings System - **NEW**
   - **Description**: Create account settings interface using Stack Auth's built-in account settings components or custom implementation.
   - **Deliverables**:
-    - Account settings modal/page integration
-    - User preference management interface
-    - Profile information display and editing
-    - Password change and email management (via Stack Auth)
+    - Account settings page integration ✅ (`/dashboard/settings`)
+    - User preference management interface ✅ (SettingsForm component)
+    - Profile information display and editing ✅ (Display name, email, verification status)
+    - Password change and email management (via Stack Auth) ✅ (Link to Stack Auth settings)
   - **Requirements**: Account Settings - user preferences, profile management, security settings
   - **Estimated Effort**: 3 hours
   - **Dependencies**: Task 2.3
-
-- [ ] **2.5** Update User Activity Integration - **UPDATED**
-  - **Description**: Update user activity tracking to properly reference Stack Auth users and test activity logging with authenticated users.
-  - **Deliverables**:
-    - Verify user_activities table references neon_auth.users_sync correctly
-    - Test activity creation with Stack Auth user IDs
-    - Update activity queries to handle Stack Auth user data
-    - Activity logging functions integration
-  - **Requirements**: User Activity Tracking - proper Stack Auth user integration
-  - **Estimated Effort**: 1 hour
-  - **Dependencies**: Task 2.2
+  - **Status**: COMPLETED ✅
 
 ### Phase 3: Dashboard Implementation
 
