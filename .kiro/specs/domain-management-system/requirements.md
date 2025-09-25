@@ -1,226 +1,250 @@
-# Domain Management System Requirements
+# SEO Site Audit System Requirements
 
 ## 1. Introduction
 
-This document specifies the requirements for the Domain Management System for MailEye, a cold email management application. This feature provides domain and subdomain setup, DNS configuration management, email authentication (SPF/DKIM/DMARC) validation, and reputation monitoring to ensure optimal email deliverability for cold email campaigns.
+This document specifies the requirements for the SEO Site Audit System for MailEye, a comprehensive website analysis and optimization platform. This feature provides automated website crawling, technical SEO issue detection, site health scoring, performance analysis, and actionable recommendations to improve search engine visibility and user experience, while establishing the foundation for future cold email domain management.
 
-**Architecture Overview**: Next.js API routes for DNS validation, integration with domain registrar APIs, automated SPF/DKIM/DMARC record checking, and a user-friendly interface for domain configuration with real-time validation feedback.
+**Architecture Overview**: Next.js 15 App Router with server-side crawling engine, automated website analysis covering 140+ SEO issues, real-time audit progress tracking, PostgreSQL database for audit result storage, and an intuitive dashboard providing detailed issue categorization with fix recommendations.
 
 ## 2. User Stories
 
-### Domain Setup Users
-- **As a cold email marketer**, I want to add my domain to the system, so that I can configure it for cold email campaigns
-- **As a user**, I want to add subdomains for email sending, so that I can protect my main domain reputation
-- **As a user**, I want to see DNS configuration instructions, so that I can properly set up email authentication
+### SEO Professionals
+- **As an SEO specialist**, I want to audit websites comprehensively, so that I can identify all technical issues affecting search rankings
+- **As an SEO consultant**, I want detailed fix recommendations for each issue, so that I can provide actionable guidance to clients
+- **As an SEO analyst**, I want to track site health over time, so that I can measure the impact of optimization efforts
 
-### DNS Configuration Users
-- **As a user**, I want to validate my SPF records, so that I can ensure proper email authentication
-- **As a user**, I want to verify DKIM signing is working, so that my emails are properly authenticated
-- **As a user**, I want to check DMARC policy configuration, so that I comply with 2024 Gmail/Yahoo requirements
+### Website Owners
+- **As a website owner**, I want to understand my site's SEO health score, so that I can prioritize improvement efforts
+- **As a business owner**, I want to identify critical issues affecting user experience, so that I can improve site performance
+- **As a content creator**, I want to ensure my pages are optimized for search engines, so that I can increase organic visibility
 
-### Monitoring Users
-- **As a user**, I want to monitor my domain reputation, so that I can maintain good email deliverability
-- **As a user**, I want to receive alerts for DNS configuration issues, so that I can fix problems quickly
-- **As a user**, I want to see domain health scores, so that I can understand my sending reputation
+### Developers and Agencies
+- **As a web developer**, I want technical SEO issue detection, so that I can fix problems during development
+- **As a digital agency**, I want to audit multiple client websites, so that I can manage SEO health across portfolios
+- **As a technical lead**, I want automated crawling and analysis, so that I can maintain site quality at scale
+
+### Future Cold Email Users
+- **As a cold email marketer**, I want domain health foundation established, so that future email reputation features can be built
+- **As a user**, I want domain validation capabilities, so that email authentication features can be added later
 
 ## 3. Acceptance Criteria
 
-### Domain Management Requirements
-- **WHEN** a user adds a new domain, **THEN** the system **SHALL** validate domain ownership through DNS TXT record
-- **WHEN** domain verification is complete, **THEN** the system **SHALL** provide specific DNS configuration instructions
-- **WHEN** a user adds subdomains, **THEN** the system **SHALL** support unlimited subdomain management
-- **IF** domain verification fails, **THEN** the system **SHALL** provide clear error messages and retry options
+### Website Crawling Requirements
+- **WHEN** a user initiates a website audit, **THEN** the system **SHALL** validate URL accessibility and begin crawling within 10 seconds
+- **WHEN** crawling is in progress, **THEN** the system **SHALL** display real-time progress indicators and pages discovered count
+- **WHEN** a site audit is initiated, **THEN** the system **SHALL** limit crawling to maximum 1000 pages with intelligent prioritization of high-value pages
+- **WHEN** users configure crawl settings, **THEN** the system **SHALL** provide Desktop and Mobile crawl modes with distinct user agents and viewport configurations
+- **IF** crawling encounters server errors or blocks, **THEN** the system **SHALL** provide clear error messages and retry options
 
-### DNS Authentication Requirements
-- **WHEN** SPF records are checked, **THEN** the system **SHALL** validate proper SPF syntax and IP inclusion
-- **WHEN** DKIM records are verified, **THEN** the system **SHALL** confirm public key retrieval and validity
-- **WHEN** DMARC records are analyzed, **THEN** the system **SHALL** check policy compliance with 2024 requirements
-- **IF** authentication records are missing, **THEN** the system **SHALL** generate proper record values for user
+### Sitemap Integration and Orphan Page Detection
+- **WHEN** sitemap.xml is discovered, **THEN** the system **SHALL** parse and compare sitemap URLs against crawled pages to identify orphan content
+- **WHEN** orphan pages are detected, **THEN** the system **SHALL** flag unlinked content that may not be discoverable through navigation
+- **WHEN** sitemap analysis completes, **THEN** the system **SHALL** provide recommendations for improving internal linking to orphan pages
+- **IF** no sitemap exists, **THEN** the system **SHALL** recommend sitemap creation and provide implementation guidance
 
-### Reputation Monitoring Requirements
-- **WHEN** domain reputation is checked, **THEN** the system **SHALL** query Google Postmaster Tools API
-- **WHEN** blacklist status is verified, **THEN** the system **SHALL** check against 20+ major blacklists
-- **WHEN** reputation scores change, **THEN** the system **SHALL** alert users via email and dashboard notifications
-- **IF** reputation drops below 70/100, **THEN** the system **SHALL** provide remediation recommendations
+### SEO Issue Detection Requirements
+- **WHEN** pages are analyzed, **THEN** the system **SHALL** detect 140+ types of SEO issues across technical, content, and performance categories
+- **WHEN** critical issues are found, **THEN** the system **SHALL** categorize them as errors (high impact), warnings (medium impact), or notices (low impact)
+- **WHEN** missing meta tags are detected, **THEN** the system **SHALL** identify specific pages and provide example implementations
+- **IF** Core Web Vitals fail, **THEN** the system **SHALL** analyze performance bottlenecks and suggest optimization strategies
 
-### Configuration Validation Requirements
-- **WHEN** DNS changes are made, **THEN** the system **SHALL** re-validate configuration within 5 minutes
-- **WHEN** validation completes, **THEN** the system **SHALL** update domain status indicators in real-time
-- **WHEN** configuration errors are detected, **THEN** the system **SHALL** provide specific fix instructions
-- **IF** validation fails repeatedly, **THEN** the system **SHALL** escalate with detailed diagnostic information
+### AI-Era SEO Requirements
+- **WHEN** analyzing modern SEO requirements, **THEN** the system **SHALL** check for llms.txt file presence and format validation
+- **WHEN** robots.txt is analyzed, **THEN** the system **SHALL** validate syntax and identify crawl blocking issues
+- **WHEN** schema markup is found, **THEN** the system **SHALL** validate structured data using Google's standards
+- **IF** structured data is missing or invalid, **THEN** the system **SHALL** recommend appropriate schema types for content
+
+### Core Web Vitals and Performance Requirements
+- **WHEN** performance analysis is requested, **THEN** the system **SHALL** integrate both Lighthouse API for lab data and PageSpeed Insights API for real-world field data
+- **WHEN** Core Web Vitals are measured, **THEN** the system **SHALL** analyze LCP, INP, and CLS using PageSpeed Insights real user metrics (28-day trailing data)
+- **WHEN** performance optimization is needed, **THEN** the system **SHALL** use Lighthouse API for detailed synthetic testing and actionable recommendations
+- **WHEN** both Desktop and Mobile crawl modes are used, **THEN** the system **SHALL** provide separate Core Web Vitals measurements for each device type
+- **IF** insufficient real-world data exists in PageSpeed Insights, **THEN** the system **SHALL** rely on Lighthouse lab data with appropriate disclaimers
+
+### Health Score Calculation Requirements
+- **WHEN** audit completes, **THEN** the system **SHALL** calculate overall site health score using weighted algorithm with technical issues comprising 45% of total score
+- **WHEN** health score is calculated, **THEN** the system **SHALL** weight categories as: Technical Issues (45%), Performance (25%), Content (20%), Security (10%)
+- **WHEN** issues are fixed and re-audited, **THEN** the system **SHALL** show improvement in health score within 30 seconds with historical comparison
+- **WHEN** multiple audits exist, **THEN** the system **SHALL** display trend graphs showing score progression and category improvements over time
+- **IF** health score is below 60/100, **THEN** the system **SHALL** prioritize critical technical issues for immediate attention
 
 ### User Experience Requirements
-- **WHEN** domain setup wizard is accessed, **THEN** the system **SHALL** guide users through step-by-step configuration
-- **WHEN** DNS records are generated, **THEN** the system **SHALL** provide copy-paste ready values
-- **WHEN** validation is in progress, **THEN** the system **SHALL** show real-time progress indicators
-- **IF** user needs help, **THEN** the system **SHALL** provide contextual documentation and support links
+- **WHEN** audit dashboard is accessed, **THEN** the system **SHALL** display intuitive issue categorization with severity indicators
+- **WHEN** issues are clicked, **THEN** the system **SHALL** provide detailed explanations and step-by-step fix instructions
+- **WHEN** audit is in progress, **THEN** the system **SHALL** show real-time crawling progress with pages discovered count
+- **IF** user needs help understanding issues, **THEN** the system **SHALL** provide contextual tooltips and documentation links
 
 ### Performance Requirements
-- **WHEN** DNS validation is triggered, **THEN** the system **SHALL** complete checks within 30 seconds
-- **WHEN** domain dashboard loads, **THEN** the system **SHALL** display cached status within 2 seconds
-- **WHEN** reputation monitoring runs, **THEN** the system **SHALL** update scores within 60 seconds
+- **WHEN** website audit is initiated, **THEN** the system **SHALL** begin crawling within 10 seconds of URL submission
+- **WHEN** audit dashboard loads, **THEN** the system **SHALL** display cached results within 1 second
+- **WHEN** large sites are audited, **THEN** the system **SHALL** maintain responsive UI during background processing
 
 ### Security Requirements
-- **WHEN** domain ownership is verified, **THEN** the system **SHALL** use secure DNS TXT record validation
-- **WHEN** API keys are stored, **THEN** the system **SHALL** encrypt sensitive configuration data
-- **IF** unauthorized domain access is attempted, **THEN** the system **SHALL** log and block the request
+- **WHEN** websites are crawled, **THEN** the system **SHALL** respect robots.txt and rate limiting to avoid overloading target servers
+- **WHEN** audit data is stored, **THEN** the system **SHALL** encrypt sensitive crawl data and user information
+- **IF** malicious websites are detected, **THEN** the system **SHALL** implement sandbox crawling and warn users of potential risks
 
 ## 4. Technical Architecture
 
 ### Frontend Architecture
-- **Framework**: Next.js 15 App Router with React 19
-- **State Management**: React Server Components with real-time validation updates
-- **UI Components**: Custom domain configuration forms with Tailwind CSS
-- **Styling**: Tailwind CSS with status indicators and progress components
+- **Framework**: Next.js 15 App Router with React 19 for server-side rendering and client interactivity
+- **State Management**: React Server Components with TanStack Query for real-time audit progress and result caching
+- **UI Components**: shadcn/ui components with custom SEO audit dashboard and issue visualization
+- **Styling**: Tailwind CSS with dark theme design system and responsive progress indicators
 
 ### Backend Architecture
-- **Server**: Next.js API routes with DNS validation libraries
-- **Database**: Neon PostgreSQL with domain and DNS record schemas
-- **Authentication**: Domain ownership verification through DNS TXT records
-- **External Integrations**: Google Postmaster Tools API, MXToolbox API, DNS resolution libraries
+- **Server**: Next.js 15 Server Actions with headless browser crawling engine (Puppeteer/Playwright)
+- **Database**: Neon PostgreSQL with comprehensive audit result storage, historical tracking, and trend analysis schemas
+- **Crawling Engine**: Configurable Desktop/Mobile crawler with 1000-page limit, intelligent prioritization, and sitemap integration
+- **Analysis Engine**: Modular issue detection system with weighted scoring (Technical 45%, Performance 25%, Content 20%, Security 10%)
 
 ### Key Libraries & Dependencies
-- **DNS Validation**: dns-js, validator for domain/email validation
-- **Monitoring**: Google Postmaster Tools API client, custom blacklist checker
-- **Database**: Drizzle ORM with domain management schema
-- **Notifications**: Resend for DNS configuration alerts
+- **Web Crawling**: Puppeteer/Playwright with Desktop/Mobile user agent switching, cheerio for HTML parsing, sitemap-parser for orphan page detection
+- **Performance Analysis**: Lighthouse API for synthetic lab data, PageSpeed Insights API for real-world Core Web Vitals metrics
+- **SEO Analysis**: Custom weighted rule engine for 140+ issue types, schema-validator for structured data validation
+- **Database**: Drizzle ORM with audit history schemas, trend calculation queries, connection pooling for concurrent operations
+- **Visualization**: Chart.js/Recharts for trend graphs, Redis caching for audit result optimization and historical data
 
 ## 5. Feature Specifications
 
 ### Core Features
-1. **Domain Registration**: Add and verify domain ownership
-2. **Subdomain Management**: Create and manage email sending subdomains
-3. **DNS Configuration**: SPF/DKIM/DMARC setup and validation
-4. **Reputation Monitoring**: Real-time domain reputation tracking
+1. **Configurable Website Crawling**: Desktop/Mobile crawl modes with 1000-page limit, intelligent prioritization, and sitemap integration for orphan page detection
+2. **Comprehensive SEO Analysis**: 140+ issue detection types with weighted scoring (Technical 45%, Performance 25%, Content 20%, Security 10%)
+3. **Dual Performance Integration**: Lighthouse API for lab testing + PageSpeed Insights API for real-world Core Web Vitals data
+4. **Visual Trend Analysis**: Historical audit tracking with trend graphs showing score progression and category improvements over time
 
 ### Advanced Features
-1. **Bulk Domain Management**: Import and configure multiple domains
-2. **Automated DNS Setup**: API integration with domain registrars
-3. **Custom DKIM Generation**: Generate and rotate DKIM keys
+1. **Bulk Site Management**: Multi-site audit management for agencies and enterprise users
+2. **Historical Tracking**: Audit history with trend analysis and improvement measurement over time
+3. **Custom Rule Sets**: Configurable audit rules and thresholds for specific industry requirements
+4. **Performance Integration**: Core Web Vitals monitoring with Lighthouse-powered performance analysis
 
 ### Platform-Specific Features
-1. **Desktop**: Full domain management interface with detailed DNS records view
-2. **Mobile**: Simplified domain status monitoring and quick validation
-3. **API**: RESTful endpoints for domain configuration automation
+1. **Desktop**: Full-featured audit dashboard with trend visualizations, Desktop/Mobile crawl mode selection, detailed Core Web Vitals analysis, and comprehensive orphan page reports
+2. **Mobile**: Responsive audit interface with simplified trend graphs, priority issue highlighting, and quick health score overview
+3. **API**: RESTful endpoints supporting configurable crawl parameters, historical audit data export, and webhook integrations for trend alerts
 
 ## 6. Success Criteria
 
 ### User Experience
-- **WHEN** users complete domain setup, **THEN** users **SHALL** achieve >90% successful configuration rate
-- **WHEN** DNS validation occurs, **THEN** users **SHALL** receive results within 30 seconds
-- **WHEN** domain issues are detected, **THEN** users **SHALL** receive actionable fix recommendations
+- **WHEN** users initiate website audits, **THEN** users **SHALL** achieve >95% successful audit completion rate
+- **WHEN** SEO issues are discovered, **THEN** users **SHALL** receive actionable fix recommendations with implementation examples
+- **WHEN** audit results are displayed, **THEN** users **SHALL** understand issue priority and impact through clear categorization
 
 ### Technical Performance
-- **WHEN** reputation monitoring runs, **THEN** the system **SHALL** check 50+ domains within 5 minutes
-- **WHEN** DNS records are validated, **THEN** the system **SHALL** maintain 99% accuracy rate
-- **WHEN** domain status is queried, **THEN** the system **SHALL** respond within 500ms
+- **WHEN** website audits are performed, **THEN** the system **SHALL** analyze 1000+ page sites within 5 minutes
+- **WHEN** SEO issues are detected, **THEN** the system **SHALL** maintain >95% accuracy rate compared to manual expert audits
+- **WHEN** audit dashboards load, **THEN** the system **SHALL** display results within 1 second using cached data
 
 ### Business Goals
-- **WHEN** domains are properly configured, **THEN** the system **SHALL** achieve 95% email deliverability rate
-- **WHEN** reputation monitoring alerts are sent, **THEN** the system **SHALL** prevent 80% of deliverability issues
-- **WHEN** domain health is optimized, **THEN** the system **SHALL** maintain sender reputation scores >80/100
+- **WHEN** SEO issues are identified and fixed, **THEN** users **SHALL** achieve measurable improvements in search visibility within 30 days
+- **WHEN** health scores improve by 20+ points, **THEN** users **SHALL** observe corresponding increases in organic traffic
+- **WHEN** technical issues are resolved, **THEN** sites **SHALL** demonstrate improved Core Web Vitals and user experience metrics
 
 ## 7. Assumptions and Dependencies
 
 ### Technical Assumptions
-- Users have access to domain registrar DNS management
-- Google Postmaster Tools API provides reliable reputation data
-- DNS propagation typically completes within 24 hours
+- Target websites are publicly accessible and not behind authentication walls
+- Modern websites use standard HTML structures and common CMS patterns
+- Crawling target sites will not trigger aggressive bot detection or blocking
 
 ### External Dependencies
-- Google Postmaster Tools API availability and rate limits
-- MXToolbox API for blacklist checking (free tier)
-- Domain registrar APIs for automated DNS configuration
+- Puppeteer/Playwright browser automation libraries for JavaScript-enabled crawling
+- Google Lighthouse API for Core Web Vitals and performance analysis
+- Schema.org standards for structured data validation
 
 ### Resource Assumptions
-- DNS validation libraries are well-maintained and accurate
-- Implementation timeline of 2-3 weeks for complete domain management
-- Testing with real domains for validation accuracy
+- SEO analysis rules engine requires continuous updates to match evolving search engine requirements
+- Implementation timeline of 3-4 weeks for comprehensive SEO audit system
+- Testing with diverse website types for accuracy validation across different platforms
 
 ## 8. Constraints and Limitations
 
 ### Technical Constraints
-- DNS propagation delays can affect real-time validation
-- Free tier API limits for reputation monitoring services
-- Limited control over third-party DNS providers
+- Website crawling rate limits to avoid overwhelming target servers or triggering bot detection
+- JavaScript-heavy sites may require additional processing time for proper content analysis
+- Large sites (10,000+ pages) may require background processing and partial result delivery
 
 ### Business Constraints
-- No budget for premium domain management services
-- Must support various domain registrars and DNS providers
-- Compliance with domain verification standards
+- No budget for premium SEO analysis APIs beyond free tiers of Google services
+- Must support diverse website architectures from simple HTML to complex SPAs
+- Compliance with web scraping best practices and robots.txt standards
 
 ### Regulatory Constraints
-- SPF/DKIM/DMARC compliance with 2024 Gmail/Yahoo requirements
-- Domain ownership verification for anti-spam compliance
-- Data protection for domain configuration information
+- GDPR compliance for audit data storage and user privacy protection
+- Respectful crawling practices to avoid legal issues with target website owners
+- Data retention policies for audit results and crawl data management
 
 ## 9. Risk Assessment
 
 ### Technical Risks
-- **Risk**: DNS validation accuracy issues
+- **Risk**: Website crawling being blocked by anti-bot measures or rate limiting
   - **Likelihood**: Medium
   - **Impact**: High
-  - **Mitigation**: Multiple validation methods and fallback checks
+  - **Mitigation**: Intelligent crawling patterns, respect for robots.txt, and user agent rotation
 
 ### Business Risks
-- **Risk**: Domain reputation monitoring API limitations
-  - **Likelihood**: Medium
+- **Risk**: SEO rule accuracy becoming outdated as search algorithms evolve
+  - **Likelihood**: High
   - **Impact**: Medium
-  - **Mitigation**: Multiple monitoring sources and cached results
+  - **Mitigation**: Regular rule updates, community feedback integration, and algorithm change monitoring
 
 ### User Experience Risks
-- **Risk**: Complex DNS configuration overwhelming users
+- **Risk**: Complex SEO recommendations overwhelming non-technical users
   - **Likelihood**: High
   - **Impact**: High
-  - **Mitigation**: Guided wizard interface with clear instructions
+  - **Mitigation**: Progressive disclosure, priority-based recommendations, and beginner-friendly explanations
 
 ## 10. Non-Functional Requirements
 
 ### Scalability
-- Support for 100+ domains per user account
-- Efficient DNS validation for bulk domain operations
-- Cached reputation scores to reduce API calls
+- Support for 500+ website audits per user account with historical data retention
+- Concurrent crawling of multiple sites with intelligent resource allocation
+- Efficient audit result caching to minimize re-crawling of unchanged pages
 
 ### Availability
-- 99% uptime for domain validation services
-- Graceful handling of DNS resolution failures
-- Backup validation methods when primary services are down
+- 99.5% uptime for website auditing services with graceful degradation during high load
+- Robust error handling for inaccessible websites or crawling failures
+- Queue-based processing system for large site audits with progress tracking
 
 ### Maintainability
-- Modular DNS validation system for easy updates
-- Clear logging for troubleshooting DNS issues
-- Comprehensive test coverage for validation logic
+- Modular SEO rule engine with plugin architecture for easy rule updates
+- Comprehensive logging for crawling operations and audit result debugging
+- Extensive test coverage for crawling logic and SEO analysis accuracy
 
 ### Usability
-- Intuitive domain setup wizard for non-technical users
-- Visual indicators for DNS configuration status
-- Mobile-responsive domain management interface
+- Intuitive audit dashboard with progressive information disclosure for technical and non-technical users
+- Visual health score indicators with color-coded severity levels and trend analysis
+- Mobile-responsive audit interface with priority issue highlighting for on-the-go management
 
 ## 11. Future Considerations
 
 ### Phase 2 Features
-- Automated DKIM key rotation
-- Advanced reputation analytics and trending
-- Integration with domain registrar APIs for one-click setup
+- AI-powered SEO recommendation engine with machine learning-based priority suggestions
+- Competitive analysis integration comparing site health against industry benchmarks
+- Advanced performance monitoring with real-time Core Web Vitals tracking
+- White-label audit reports for agency clients with custom branding
 
-### Integration Opportunities
-- Email service provider integration for automatic configuration
-- Domain marketplace integration for acquiring email-optimized domains
-- Advanced analytics integration for correlation with campaign performance
+### Cold Email Integration Roadmap
+- Domain reputation foundation leveraging existing audit infrastructure
+- Email authentication validation (SPF/DKIM/DMARC) building on domain analysis capabilities
+- Email deliverability scoring integrated with existing health score algorithms
+- Subdomain management for email sending with SEO impact analysis
 
-### Technical Debt
-- Migration to more comprehensive DNS validation libraries
-- Enhanced reputation monitoring with additional data sources
-- Improved caching strategy for DNS validation results
+### Technical Evolution
+- Enhanced AI integration for automated issue prioritization and fix suggestions
+- Advanced crawling capabilities supporting JavaScript frameworks and SPA architectures
+- Integration with additional SEO data sources (Google Search Console, Bing Webmaster Tools)
+- Real-time audit monitoring with webhook alerts for critical issue detection
 
 ---
 
 **Document Status**: Draft
 
-**Last Updated**: 2025-09-23
+**Last Updated**: 2025-09-25
 
-**Stakeholders**: Product Owner, Development Team, DevOps Team
+**Stakeholders**: Product Owner, Development Team, DevOps Team, SEO Specialists
 
-**Related Documents**: User Authentication Requirements, Email Pool Management Requirements
+**Related Documents**: User Authentication Requirements, Email Pool Management Requirements (Future Integration)
 
-**Version**: 1.0
+**Version**: 2.0
