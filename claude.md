@@ -99,6 +99,88 @@ stack/ # Stack Auth configuration
 - **TypeScript everywhere**: Full type safety across data and action layers
 - **Performance first**: Server Components for initial renders, TanStack Query for client interactions
 
+### Error Handling and Types Architecture
+
+#### Error Handling System (`lib/errors/`)
+The project uses a comprehensive error handling framework designed for the SEO audit system:
+
+**File Structure:**
+```
+lib/errors/
+├── index.ts          # Main error framework with base classes
+├── timeout.ts        # Timeout-related errors (Vercel, network, browser)
+├── crawl.ts          # Web crawling errors (browser, parsing, robots.txt)
+└── api.ts            # API integration errors (Lighthouse, PageSpeed Insights)
+```
+
+**How to Reference Error Handling:**
+- **Import errors**: `import { AuditError, TimeoutError, CrawlError, APIError } from '@/lib/errors'`
+- **Use specific error types**: Always use the most specific error class available
+- **Error context**: Include relevant context when throwing errors for better debugging
+
+**Examples:**
+```typescript
+// Throwing a browser timeout error
+throw new BrowserTimeoutError('page load', 'playwright', 30000, { url: pageUrl });
+
+// Throwing an API quota error
+throw new APIQuotaError('Lighthouse', 'daily', 1000, 1000, { url: auditUrl });
+
+// Catching and handling errors
+try {
+  await crawlPage(url);
+} catch (error) {
+  const auditError = ErrorHandler.handle(error, { url });
+  if (ErrorHandler.shouldRetry(error)) {
+    // Retry logic
+  } else {
+    // Show user-friendly message
+    showError(auditError.toUserFriendly());
+  }
+}
+```
+
+#### TypeScript Types Organization (`lib/types/`)
+Types should be organized by domain/feature for maintainability:
+
+**File Structure:**
+```
+lib/types/
+├── audit.ts          # Core audit interfaces and types
+├── seo.ts            # SEO analysis types and rule definitions
+├── performance.ts    # Performance metrics and analysis types
+├── crawl.ts          # Web crawling and browser automation types
+└── api.ts            # External API response and request types
+```
+
+**How to Reference Types:**
+- **Domain-specific imports**: `import { AuditSession, AuditResult } from '@/lib/types/audit'`
+- **Cross-domain types**: Use shared types from `lib/types/` for consistency
+- **Component props**: Co-locate component-specific types with components when they're not reused
+
+**Examples:**
+```typescript
+// Importing audit types
+import { AuditSession, AuditResult, AuditProgress } from '@/lib/types/audit';
+
+// Importing SEO rule types
+import { SEORule, SEOIssue, IssueCategory } from '@/lib/types/seo';
+
+// Using types in functions
+export async function startAudit(config: AuditConfiguration): Promise<AuditSession> {
+  // Implementation
+}
+```
+
+#### Best Practices for Error Handling and Types:
+
+1. **Always use typed errors**: Don't throw generic Error objects
+2. **Provide user-friendly messages**: Every error should have a clear user message and suggested action
+3. **Include context**: Add relevant context (URLs, user actions, etc.) to errors
+4. **Use error recovery**: Implement retry mechanisms where appropriate
+5. **Type everything**: All functions, parameters, and return values should be typed
+6. **Share types across layers**: Use the same types in server actions, components, and database layers
+
 ### Component Organization Guidelines
 
 #### Component Placement Rules:

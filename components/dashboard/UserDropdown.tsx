@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { UserWithMetadata } from "@/server/auth/auth.data"
-import { useStackApp } from "@stackframe/stack"
 import Link from "next/link"
 
 interface UserDropdownProps {
@@ -19,11 +18,10 @@ interface UserDropdownProps {
 }
 
 export function UserDropdown({ user }: UserDropdownProps) {
-  const stackApp = useStackApp()
 
   const handleSignOut = async () => {
     try {
-      await stackApp.signOut()
+      user.signOut()
     } catch (error) {
       console.error('Sign out error:', error)
     }
