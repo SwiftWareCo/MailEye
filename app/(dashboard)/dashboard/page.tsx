@@ -2,6 +2,8 @@ import { requireOnboarding } from '@/server/auth/auth.data';
 import { redirect } from 'next/navigation';
 import { db, auditSessions } from '@/lib/db';
 import { eq } from 'drizzle-orm';
+import { ConfigTest } from '@/components/dashboard/ConfigTest';
+import { Separator } from '@/components/ui/separator';
 
 export default async function DashboardPage() {
   const { needsOnboarding, user: userWithMetadata } = await requireOnboarding();
@@ -45,6 +47,13 @@ export default async function DashboardPage() {
           Your MailEye dashboard is ready.
         </p>
       </div>
+
+      {/* Configuration Test Section */}
+      <div className='max-w-6xl mx-auto'>
+        <ConfigTest />
+      </div>
+
+      <Separator className="my-8" />
 
       {/* Database Test Results */}
       <div className='max-w-2xl mx-auto bg-gray-800/50 p-6 rounded-lg border border-gray-700'>

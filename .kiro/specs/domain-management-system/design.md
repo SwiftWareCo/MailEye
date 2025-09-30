@@ -2,9 +2,9 @@
 
 ## Overview
 
-The SEO Site Audit System is a comprehensive website analysis platform that automatically crawls websites, detects 140+ types of SEO issues, and provides actionable recommendations with trend analysis. The system is designed to handle 10-20 page sites initially, with configurable Desktop/Mobile crawl modes, sitemap integration for orphan page detection, and dual performance analysis using both Lighthouse and PageSpeed Insights APIs.
+The SEO Site Audit System is a comprehensive website analysis platform that automatically crawls websites using Crawlee (JavaScript), detects 140+ types of SEO issues, and provides actionable recommendations with trend analysis. The system is designed to handle small-scale crawls (<100 pages) initially, with configurable Desktop/Mobile crawl modes, sitemap integration for orphan page detection, and dual performance analysis using both Lighthouse and PageSpeed Insights APIs.
 
-This system establishes the foundation for future cold email domain management features while providing immediate value through comprehensive SEO auditing capabilities similar to Semrush's Site Audit tool.
+This system establishes the foundation for future cold email domain management features (including lead generation via email extraction) while providing immediate value through comprehensive SEO auditing capabilities similar to Semrush's Site Audit tool. The unified Vercel deployment leverages Server Actions with Crawlee for modern, anti-bot resistant crawling.
 
 ## Architecture
 
@@ -21,10 +21,11 @@ graph TB
 
     subgraph "Vercel Functions Layer"
         Orchestrator[Audit Orchestrator]
-        Crawler[Page Crawler Functions]
+        CrawleeEngine[Crawlee Crawler Engine]
         Performance[Performance Analyzer]
         SEOEngine[SEO Rule Engine]
         Aggregator[Score Aggregator]
+        LeadExtractor[Lead Generation Handler]
     end
 
     subgraph "External APIs"
@@ -39,10 +40,11 @@ graph TB
     end
 
     Dashboard --> Orchestrator
-    Orchestrator --> Crawler
+    Orchestrator --> CrawleeEngine
     Orchestrator --> Performance
     Orchestrator --> SEOEngine
-    Crawler --> Aggregator
+    CrawleeEngine --> Aggregator
+    CrawleeEngine --> LeadExtractor
     Performance --> Lighthouse
     Performance --> PageSpeed
     SEOEngine --> Aggregator
@@ -64,17 +66,17 @@ graph TB
 **Backend Services**
 
 - Next.js 15 Server Actions for audit orchestration and data management
-- Vercel Functions with microservice architecture to handle timeout constraints (10s Hobby, 60s Pro with waitUntil support)
-- Playwright (primary) with Puppeteer fallback for JavaScript-enabled website crawling with Desktop/Mobile user agents
+- Vercel Functions with unified architecture and waitUntil optimization for timeout handling (10s Hobby, 60s Pro)
+- Crawlee (JavaScript) for modern, anti-bot resistant website crawling with Desktop/Mobile user agents and lead generation capabilities
 - Custom weighted rule engine for 140+ SEO issue detection types
 - Drizzle ORM for type-safe database operations and audit result management
 
 **Infrastructure**
 
-- Vercel Pro Plan deployment for 60-second function timeouts and enhanced reliability
+- Vercel Pro Plan deployment for 60-second function timeouts, waitUntil optimization, and enhanced reliability
 - Neon PostgreSQL for audit result storage, historical tracking, and trend analysis
 - Redis caching for crawl result optimization and performance enhancement
-- Background job processing system for large site audits with progress tracking
+- Integrated job processing using Vercel's waitUntil for small-scale audits with progress tracking
 
 ## Components and Interfaces
 
@@ -94,8 +96,9 @@ interface AuditOrchestrator {
 interface AuditConfig {
   url: string;
   crawlMode: 'desktop' | 'mobile';
-  maxPages: number; // Limited to 1000
+  maxPages: number; // Limited to 100 for small-scale crawls
   includePerformance: boolean;
+  extractLeads: boolean; // Enable lead generation during crawl
   customRules?: SEORuleConfig[];
 }
 
@@ -111,11 +114,13 @@ interface AuditSession {
 }
 ```
 
-#### 2. Page Crawler Service
+#### 2. Crawlee Crawler Service
 
 ```typescript
-interface PageCrawler {
-  crawlPage(url: string, config: CrawlConfig): Promise<CrawlResult>;
+interface CrawleeCrawler {
+  initializeCrawler(config: CrawleeConfig): Promise<void>;
+  crawlSite(startUrl: string, config: CrawlConfig): Promise<CrawlResult[]>;
+  extractLeadData(html: string, url: string): Promise<LeadData>;
   analyzeTechnicalSEO(
     html: string,
     metadata: PageMetadata
@@ -126,11 +131,21 @@ interface PageCrawler {
   ): Promise<OrphanPage[]>;
 }
 
+interface CrawleeConfig {
+  maxRequestsPerCrawl: number; // Limited to 100 for small-scale crawls
+  requestHandler: string; // 'cheerio' for basic, 'playwright' for JS-heavy sites
+  sessionPoolOptions: SessionPoolOptions;
+  proxyConfiguration?: ProxyConfiguration;
+  autoscaledPoolOptions: AutoscaledPoolOptions;
+}
+
 interface CrawlConfig {
   userAgent: string;
   viewport: { width: number; height: number };
   timeout: number; // Max 8 seconds to stay within Vercel limits
   followRedirects: boolean;
+  deviceCategory: 'desktop' | 'mobile';
+  extractLeads: boolean;
 }
 
 interface CrawlResult {
@@ -141,6 +156,7 @@ interface CrawlResult {
   loadTime: number;
   resources: Resource[];
   issues: SEOIssue[];
+  leadData?: LeadData;
 }
 
 interface PageMetadata {
@@ -152,6 +168,13 @@ interface PageMetadata {
   structuredData: any[];
   openGraph: OpenGraphData;
   socialTags: SocialTag[];
+}
+
+interface LeadData {
+  emails: string[];
+  phoneNumbers: string[];
+  socialLinks: SocialLink[];
+  contactForms: ContactForm[];
 }
 ```
 
@@ -353,10 +376,11 @@ CREATE TABLE audit_sessions (
   crawl_mode VARCHAR(20) NOT NULL CHECK (crawl_mode IN ('desktop', 'mobile')),
   status VARCHAR(20) NOT NULL DEFAULT 'initializing',
   progress INTEGER DEFAULT 0,
-  max_pages INTEGER DEFAULT 1000,
+  max_pages INTEGER DEFAULT 100,
   pages_crawled INTEGER DEFAULT 0,
   health_score JSONB,
   config JSONB NOT NULL,
+  leads_extracted JSONB, -- Store extracted lead data
   started_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   completed_at TIMESTAMPTZ,
   estimated_completion TIMESTAMPTZ,
@@ -805,7 +829,7 @@ interface VercelOptimization {
 }
 ```
 
-### Desktop vs Mobile Crawl Modes
+### Desktop vs Mobile Crawl Modes with Crawlee
 
 ```typescript
 interface CrawlModeConfig {
@@ -822,45 +846,87 @@ interface CrawlModeConfig {
   };
 }
 
-class PlatformCrawler {
-  static async crawlWithMode(
-    url: string,
-    mode: 'desktop' | 'mobile'
-  ): Promise<CrawlResult> {
+class CrawleePlatformCrawler {
+  static async createCrawlerConfig(
+    mode: 'desktop' | 'mobile',
+    extractLeads: boolean = false
+  ): Promise<CrawleeConfig> {
     const config = CrawlModeConfig[mode];
 
-    // Use Playwright as primary, Puppeteer as fallback
-    try {
-      const { chromium } = await import('playwright');
-      const browser = await chromium.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'], // Vercel requirements
-      });
-
-      const context = await browser.newContext({
+    return {
+      maxRequestsPerCrawl: 100, // Small-scale crawls
+      requestHandler: 'cheerio', // Use 'playwright' for JS-heavy sites
+      sessionPoolOptions: {
+        maxPoolSize: 10,
+        sessionOptions: {
+          maxUsageCount: 5,
+        },
+      },
+      proxyConfiguration: undefined, // Add proxy support for anti-bot protection
+      autoscaledPoolOptions: {
+        maxConcurrency: 3, // Respectful crawling
+        desiredConcurrency: 1,
+      },
+      launchContext: {
         userAgent: config.userAgent,
         viewport: config.viewport,
-        ...(config.device && { ...chromium.devices[config.device] }),
-      });
+        device: config.device,
+        launchOptions: {
+          args: ['--no-sandbox', '--disable-setuid-sandbox'], // Vercel requirements
+        },
+      },
+      failedRequestHandler: async ({ request, error }) => {
+        console.error(`Request ${request.url} failed: ${error.message}`);
+      },
+      preNavigationHooks: [
+        async ({ request, page }) => {
+          if (extractLeads) {
+            // Set up lead extraction handlers
+            await page.route('**/*', (route) => route.continue());
+          }
+        },
+      ],
+    };
+  }
 
-      const page = await context.newPage();
-      // Implement crawling logic...
+  static async crawlWithMode(
+    startUrl: string,
+    mode: 'desktop' | 'mobile',
+    extractLeads: boolean = false
+  ): Promise<CrawlResult[]> {
+    const { CheerioCrawler, PlaywrightCrawler } = await import('crawlee');
+    const config = await this.createCrawlerConfig(mode, extractLeads);
 
-    } catch (playwrightError) {
-      // Fallback to Puppeteer
-      const puppeteer = await import('puppeteer');
-      const browser = await puppeteer.launch({
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
+    const results: CrawlResult[] = [];
 
-      const page = await browser.newPage();
-      await page.setUserAgent(config.userAgent);
-      await page.setViewport(config.viewport);
+    // Use Cheerio for basic crawling, Playwright for JS-heavy sites
+    const crawler = config.requestHandler === 'cheerio'
+      ? new CheerioCrawler({
+          ...config,
+          requestHandler: async ({ request, $, response }) => {
+            // Extract data using Cheerio
+            const result = await this.extractPageData($, request.url, response);
+            if (extractLeads) {
+              result.leadData = await this.extractLeadData($, request.url);
+            }
+            results.push(result);
+          },
+        })
+      : new PlaywrightCrawler({
+          ...config,
+          requestHandler: async ({ request, page, response }) => {
+            // Extract data using Playwright
+            const html = await page.content();
+            const result = await this.extractPageDataFromHTML(html, request.url, response);
+            if (extractLeads) {
+              result.leadData = await this.extractLeadDataFromPage(page, request.url);
+            }
+            results.push(result);
+          },
+        });
 
-      if (config.device) {
-        await page.emulate(puppeteer.devices[config.device]);
-      }
-      // Implement crawling logic...
-    }
+    await crawler.run([startUrl]);
+    return results;
   }
 }
 ```
@@ -871,41 +937,66 @@ class PlatformCrawler {
 
 - Audit initiation: < 3 seconds response time
 - Progress updates: < 1 second refresh rate
-- Small sites (10-20 pages): Complete audit within 2 minutes
+- Small sites (<100 pages): Complete audit within 5 minutes with Crawlee optimization
 - Dashboard loading: < 1 second for cached results
 - Trend visualizations: < 2 seconds to render
 
 ### Optimization Strategies
 
-**Function-Level Optimizations**
+**Crawlee-Based Optimizations**
 
 ```typescript
-// Implement intelligent batching to stay within timeout limits
-class BatchProcessor {
-  static async processPagesInBatches(
-    pages: string[],
-    batchSize = 5
+// Implement Crawlee optimization with Vercel waitUntil
+class CrawleeOptimization {
+  static async optimizedCrawlWithWaitUntil(
+    startUrl: string,
+    config: CrawlConfig,
+    waitUntil?: (promise: Promise<any>) => void
   ): Promise<CrawlResult[]> {
-    const results: CrawlResult[] = [];
-    const batches = chunk(pages, batchSize);
+    const { CheerioCrawler } = await import('crawlee');
 
-    for (const batch of batches) {
-      const batchPromises = batch.map((url) =>
-        Promise.race([
-          this.crawlPage(url),
-          this.timeoutPromise(8000), // Stay under 10s limit
-        ])
-      );
+    const crawler = new CheerioCrawler({
+      maxRequestsPerCrawl: config.maxPages || 100,
+      maxConcurrency: 3, // Respectful crawling
+      requestHandlerTimeoutSecs: 8, // Stay under Vercel limits
+      requestHandler: async ({ request, $, response }) => {
+        const result = await this.extractPageData($, request.url, response);
 
-      const batchResults = await Promise.allSettled(batchPromises);
-      results.push(
-        ...batchResults
-          .filter((r) => r.status === 'fulfilled')
-          .map((r) => r.value)
-      );
-    }
+        // Use waitUntil for post-response processing
+        if (waitUntil) {
+          waitUntil(this.postProcessResult(result));
+        }
 
-    return results;
+        return result;
+      },
+      failedRequestHandler: async ({ request, error }) => {
+        console.error(`Request ${request.url} failed: ${error.message}`);
+        // Implement retry logic with exponential backoff
+        if (this.shouldRetry(error)) {
+          await this.scheduleRetry(request, error);
+        }
+      },
+    });
+
+    return await crawler.run([startUrl]);
+  }
+
+  static async createSessionWithFingerprints(): Promise<SessionPool> {
+    const { SessionPool } = await import('crawlee');
+
+    return new SessionPool({
+      maxPoolSize: 10,
+      sessionOptions: {
+        maxUsageCount: 5,
+        maxErrorScore: 3,
+      },
+      createSessionFunction: () => ({
+        // Anti-bot fingerprinting
+        userAgent: this.generateRandomUserAgent(),
+        viewport: this.generateRandomViewport(),
+        headers: this.generateCommonHeaders(),
+      }),
+    });
   }
 }
 ```
@@ -1143,7 +1234,7 @@ interface RollbackProcedure {
 
 ### External Dependencies
 
-- **Puppeteer/Playwright**: Maintained browser automation libraries
+- **Crawlee**: Modern, JavaScript-based web crawling framework with anti-bot capabilities
 - **Lighthouse API**: Google's performance analysis service
 - **PageSpeed Insights API**: Google's real-world performance data
 - **Neon PostgreSQL**: Managed database service availability
@@ -1152,24 +1243,25 @@ interface RollbackProcedure {
 ### Risk Mitigation
 
 - **API Rate Limits**: Implement intelligent backoff and caching strategies
-- **Function Timeouts**: Microservice architecture with graceful degradation
+- **Function Timeouts**: Crawlee optimization with Vercel waitUntil and graceful degradation
 - **External Service Outages**: Fallback mechanisms and cached data usage
 - **Database Performance**: Connection pooling and query optimization
 - **Security Threats**: Input validation, rate limiting, and audit logging
+- **Anti-Bot Protection**: Leverage Crawlee's session management and fingerprinting capabilities
 
 ---
 
 **Requirements Traceability**: This design addresses all requirements from requirements.md including:
 
-- Configurable Desktop/Mobile crawl modes (R1.1, R1.4)
-- 1000-page limit with intelligent prioritization (R1.3)
+- Configurable Desktop/Mobile crawl modes with Crawlee (R1.1, R1.4)
+- 100-page limit with intelligent prioritization for small-scale crawls (R1.3)
 - Sitemap integration and orphan page detection (R2.1-R2.4)
 - 140+ SEO issue detection types (R3.1-R3.2)
 - Weighted health scoring (Technical 45%, Performance 25%, Content 20%, Security 10%) (R4.1-R4.2)
 - Dual Performance API integration (Lighthouse + PageSpeed Insights) (R5.1-R5.5)
 - Trend visualization and historical tracking (R4.3-R4.4)
 - Real-time progress tracking (R6.1-R6.4)
-- Vercel deployment optimization for 10-20 page sites
+- Unified Vercel deployment optimization with lead generation capabilities for future cold email integration
 
 **Review Status**: Draft
 
