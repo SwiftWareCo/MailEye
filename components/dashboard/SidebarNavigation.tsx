@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
   Settings,
+  Globe,
 } from "lucide-react"
 
 interface NavigationItem {
@@ -18,6 +19,7 @@ interface NavigationItem {
 
 export const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Domains", href: "/dashboard/domains", icon: Globe },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 

@@ -4,6 +4,7 @@ import { stackServerApp } from '../stack/server';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/components/theme-provider';
+import { QueryProvider } from '@/lib/providers/query-provider';
 import './globals.css';
 
 const theme = {
@@ -83,12 +84,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <StackProvider app={stackServerApp}>
-            <StackTheme theme={theme}>
-              {children}
-              <Toaster />
-            </StackTheme>
-          </StackProvider>
+          <QueryProvider>
+            <StackProvider app={stackServerApp}>
+              <StackTheme theme={theme}>
+                {children}
+                <Toaster />
+              </StackTheme>
+            </StackProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>
