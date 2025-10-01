@@ -6,7 +6,6 @@ import { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
-  Mail,
   Settings,
 } from "lucide-react"
 
@@ -19,7 +18,6 @@ interface NavigationItem {
 
 export const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Campaigns", href: "/dashboard/campaigns", icon: Mail },
   { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ]
 
