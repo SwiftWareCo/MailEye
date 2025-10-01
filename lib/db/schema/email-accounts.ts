@@ -52,14 +52,14 @@ export const emailAccounts = pgTable("email_accounts", {
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
+}, (table) => [
   // Critical indexes for performance
-  userIdIdx: index("idx_email_accounts_user_id").on(table.userId),
-  domainIdIdx: index("idx_email_accounts_domain_id").on(table.domainId),
-  emailUniqueIdx: uniqueIndex("idx_email_accounts_email_unique").on(table.email),
-  userStatusIdx: index("idx_email_accounts_user_status").on(table.userId, table.status),
-  warmupStatusIdx: index("idx_email_accounts_warmup_status").on(table.warmupStatus),
-}));
+  index("idx_email_accounts_user_id").on(table.userId),
+  index("idx_email_accounts_domain_id").on(table.domainId),
+  uniqueIndex("idx_email_accounts_email_unique").on(table.email),
+  index("idx_email_accounts_user_status").on(table.userId, table.status),
+  index("idx_email_accounts_warmup_status").on(table.warmupStatus),
+]);
 
 /**
  * Warmup schedule table
@@ -86,11 +86,11 @@ export const warmupSchedule = pgTable("warmup_schedule", {
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
+}, (table) => [
   // Critical indexes for performance
-  emailAccountIdIdx: index("idx_warmup_schedule_email_account_id").on(table.emailAccountId),
-  dailyProcessingIdx: index("idx_warmup_schedule_daily_processing").on(table.scheduledDate, table.status),
-}));
+  index("idx_warmup_schedule_email_account_id").on(table.emailAccountId),
+  index("idx_warmup_schedule_daily_processing").on(table.scheduledDate, table.status),
+]);
 
 /**
  * Email activity log
@@ -122,9 +122,9 @@ export const emailActivityLog = pgTable("email_activity_log", {
   metadata: jsonb("metadata"),
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
+}, (table) => [
   // Critical indexes for performance
-  emailAccountIdIdx: index("idx_email_activity_log_email_account_id").on(table.emailAccountId),
-  sentAtIdx: index("idx_email_activity_log_sent_at").on(table.sentAt),
-  analyticsIdx: index("idx_email_activity_log_analytics").on(table.emailAccountId, table.sentAt, table.status),
-}));
+  index("idx_email_activity_log_email_account_id").on(table.emailAccountId),
+  index("idx_email_activity_log_sent_at").on(table.sentAt),
+  index("idx_email_activity_log_analytics").on(table.emailAccountId, table.sentAt, table.status),
+]);

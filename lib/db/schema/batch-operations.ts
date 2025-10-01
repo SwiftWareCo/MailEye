@@ -34,12 +34,12 @@ export const batchOperations = pgTable("batch_operations", {
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
+}, (table) => [
   // Critical indexes for performance
-  userIdIdx: index("idx_batch_operations_user_id").on(table.userId),
-  historyIdx: index("idx_batch_operations_history").on(table.userId, table.createdAt, table.status),
-  statusIdx: index("idx_batch_operations_status").on(table.status),
-}));
+  index("idx_batch_operations_user_id").on(table.userId),
+  index("idx_batch_operations_history").on(table.userId, table.createdAt, table.status),
+  index("idx_batch_operations_status").on(table.status),
+]);
 
 /**
  * Batch operation items
@@ -67,8 +67,8 @@ export const batchOperationItems = pgTable("batch_operation_items", {
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
+}, (table) => [
   // Critical indexes for performance
-  batchIdIdx: index("idx_batch_operation_items_batch_id").on(table.batchOperationId),
-  progressIdx: index("idx_batch_operation_items_progress").on(table.batchOperationId, table.status),
-}));
+  index("idx_batch_operation_items_batch_id").on(table.batchOperationId),
+  index("idx_batch_operation_items_progress").on(table.batchOperationId, table.status),
+]);

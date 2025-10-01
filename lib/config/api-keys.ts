@@ -6,7 +6,7 @@
 export interface CloudflareConfig {
   apiToken: string;
   accountId: string;
-  zoneId: string;
+  zoneId?: string; // Optional: zones are created per-domain
 }
 
 export interface GoDaddyConfig {
@@ -39,11 +39,11 @@ class ApiKeyValidationError extends Error {
 function validateCloudflareConfig(): CloudflareConfig {
   const apiToken = process.env.CLOUDFLARE_API_TOKEN;
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const zoneId = process.env.CLOUDFLARE_ZONE_ID;
+  const zoneId = process.env.CLOUDFLARE_ZONE_ID; // Optional
 
-  if (!apiToken || !accountId || !zoneId) {
+  if (!apiToken || !accountId) {
     throw new ApiKeyValidationError(
-      'Missing Cloudflare configuration. Required: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_ZONE_ID'
+      'Missing Cloudflare configuration. Required: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID'
     );
   }
 

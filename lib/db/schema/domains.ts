@@ -14,6 +14,10 @@ export const domains = pgTable("domains", {
   apiKey: text("api_key"),
   apiSecret: text("api_secret"),
 
+  // Cloudflare zone integration
+  cloudflareZoneId: varchar("cloudflare_zone_id", { length: 255 }), // Cloudflare zone ID from API
+  assignedNameservers: jsonb("assigned_nameservers").$type<string[]>(), // Cloudflare-assigned nameservers
+
   // DNS verification
   verificationStatus: varchar("verification_status", { length: 20 }).notNull().default("pending"), // 'pending', 'verified', 'failed'
   verificationToken: varchar("verification_token", { length: 255 }),
@@ -30,9 +34,9 @@ export const domains = pgTable("domains", {
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
+}, (table) => [
   // Critical indexes for performance
-  userIdIdx: index("idx_domains_user_id").on(table.userId),
-  domainUniqueIdx: uniqueIndex("idx_domains_domain_unique").on(table.domain),
-  userActiveIdx: index("idx_domains_user_active").on(table.userId, table.isActive),
-}));
+  index("idx_domains_user_id").on(table.userId),
+  uniqueIndex("idx_domains_domain_unique").on(table.domain),
+  index("idx_domains_user_active").on(table.userId, table.isActive),
+]);

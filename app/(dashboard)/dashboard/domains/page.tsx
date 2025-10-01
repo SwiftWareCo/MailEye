@@ -12,6 +12,7 @@ import { DomainsContent } from '@/components/domains/DomainsContent';
 import {
   connectDomainAction,
   deleteDomainAction,
+  verifyNameserversAction,
 } from '@/server/domain/domain.actions';
 
 export default async function DomainsPage() {
@@ -30,9 +31,11 @@ export default async function DomainsPage() {
   // Fetch user's domains
   const domains = await getUserDomains(user.id);
 
+
   // Bind userId to Server Actions (Next.js best practice)
   const boundConnectDomain = connectDomainAction.bind(null, user.id);
   const boundDeleteDomain = deleteDomainAction.bind(null, user.id);
+  const boundVerifyNameservers = verifyNameserversAction.bind(null, user.id);
 
   return (
     <DomainsContent
@@ -40,6 +43,7 @@ export default async function DomainsPage() {
       initialDomains={domains}
       connectDomainAction={boundConnectDomain}
       deleteDomainAction={boundDeleteDomain}
+      verifyNameserversAction={boundVerifyNameservers}
     />
   );
 }

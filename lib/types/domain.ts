@@ -48,6 +48,10 @@ export interface Domain {
   apiKey?: string | null;
   apiSecret?: string | null;
 
+  // Cloudflare zone integration
+  cloudflareZoneId?: string | null;
+  assignedNameservers?: string[] | null;
+
   // Verification
   verificationStatus: string;
   verificationToken?: string | null;

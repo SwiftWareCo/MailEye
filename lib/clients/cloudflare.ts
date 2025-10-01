@@ -31,6 +31,10 @@ export async function getZoneInfo(zoneId?: string) {
   const config = getServiceConfig('cloudflare');
   const id = zoneId || config.zoneId;
 
+  if (!id) {
+    throw new Error('Zone ID is required');
+  }
+
   return await client.zones.get({ zone_id: id });
 }
 
@@ -41,6 +45,10 @@ export async function listDNSRecords(zoneId?: string) {
   const client = getCloudflareClient();
   const config = getServiceConfig('cloudflare');
   const id = zoneId || config.zoneId;
+
+  if (!id) {
+    throw new Error('Zone ID is required');
+  }
 
   // Iterate through paginated results
   const records = [];
@@ -97,14 +105,53 @@ export async function deleteDNSRecord(zoneId: string, recordId: string) {
 
 /**
  * Creates a new zone in Cloudflare
+ * Returns zone data including assigned nameservers
  */
 export async function createZone(domainName: string) {
   const client = getCloudflareClient();
   const config = getServiceConfig('cloudflare');
 
-  return await client.zones.create({
-    account: { id: config.accountId },
-    name: domainName,
-    type: 'full',
-  });
+  try {
+    const zone = await client.zones.create({
+      account: { id: config.accountId },
+      name: domainName,
+      type: 'full',
+    });
+
+    return zone;
+  } catch (error: any) {
+    const errorMessage = error.message || JSON.stringify(error);
+
+    // Handle permission errors (403)
+    if (errorMessage.includes('403') || errorMessage.includes('permission') || errorMessage.includes('com.cloudflare.api.account.zone.create')) {
+      throw new Error(
+        `Cloudflare API token lacks required permissions to create zones.\n\n` +
+        `Required permissions:\n` +
+        `- Account → Account Settings → Read\n` +
+        `- Account → Account Zone → Edit (CRITICAL for zone creation)\n` +
+        `- Zone → Zone → Edit\n` +
+        `- Zone → DNS → Edit\n\n` +
+        `Create a new token with these permissions at:\n` +
+        `https://dash.cloudflare.com/profile/api-tokens`
+      );
+    }
+
+    // Handle domain already exists
+    if (errorMessage.includes('already exists')) {
+      throw new Error(`Domain ${domainName} is already added to Cloudflare. Please remove it first or use a different domain.`);
+    }
+
+    // Re-throw with original error
+    throw new Error(`Failed to create Cloudflare zone for ${domainName}: ${errorMessage}`);
+  }
+}
+
+/**
+ * Gets nameservers for a specific zone
+ */
+export async function getZoneNameservers(zoneId: string): Promise<string[]> {
+  const client = getCloudflareClient();
+
+  const zone = await client.zones.get({ zone_id: zoneId });
+  return zone.name_servers || [];
 }

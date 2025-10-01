@@ -8,6 +8,11 @@
 'use server';
 
 import { connectDomain } from './domain-orchestrator';
+import {
+  verifyDomainNameservers,
+  checkNameserversOnly,
+  type NameserverVerificationResult,
+} from './nameserver-verifier';
 import { db } from '@/lib/db';
 import { domains } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -132,6 +137,54 @@ export async function toggleDomainActiveAction(
     return {
       success: false,
       error: 'Failed to update domain status',
+    };
+  }
+}
+
+/**
+ * Server Action: Verify domain nameservers (Task 2.3)
+ *
+ * @param userId - User ID (bound from Server Component)
+ * @param domainId - Domain ID to verify
+ */
+export async function verifyNameserversAction(
+  userId: string,
+  domainId: string
+): Promise<NameserverVerificationResult> {
+  try {
+    return await verifyDomainNameservers(domainId, userId);
+  } catch (error) {
+    console.error('Error verifying nameservers:', error);
+    return {
+      success: false,
+      isVerified: false,
+      currentNameservers: [],
+      expectedNameservers: [],
+      message: 'Failed to verify nameservers',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Server Action: Check nameservers without database update (Task 2.3)
+ *
+ * @param domain - Domain name to check
+ */
+export async function checkNameserversAction(
+  domain: string
+): Promise<NameserverVerificationResult> {
+  try {
+    return await checkNameserversOnly(domain);
+  } catch (error) {
+    console.error('Error checking nameservers:', error);
+    return {
+      success: false,
+      isVerified: false,
+      currentNameservers: [],
+      expectedNameservers: [],
+      message: 'Failed to check nameservers',
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 }

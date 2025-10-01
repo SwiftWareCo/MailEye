@@ -11,12 +11,14 @@ import { DomainList } from './DomainList';
 import { DomainConnectionModal } from './DomainConnectionModal';
 import { useDomains } from '@/lib/hooks/use-domains';
 import type { Domain, DomainConnectionInput, DomainConnectionResult } from '@/lib/types/domain';
+import type { NameserverVerificationResult } from '@/server/domain/nameserver-verifier';
 
 interface DomainsContentProps {
   userId: string;
   initialDomains: Domain[];
   connectDomainAction: (input: DomainConnectionInput) => Promise<DomainConnectionResult>;
   deleteDomainAction: (domainId: string) => Promise<{ success: boolean; error?: string }>;
+  verifyNameserversAction: (domainId: string) => Promise<NameserverVerificationResult>;
 }
 
 export function DomainsContent({
@@ -24,6 +26,7 @@ export function DomainsContent({
   initialDomains,
   connectDomainAction,
   deleteDomainAction,
+  verifyNameserversAction,
 }: DomainsContentProps) {
   // Use TanStack Query for reactive state management
   const { data: domains } = useDomains(initialDomains, userId);
@@ -45,6 +48,7 @@ export function DomainsContent({
         userId={userId}
         domains={domains}
         deleteDomainAction={deleteDomainAction}
+        verifyNameserversAction={verifyNameserversAction}
       />
     </div>
   );

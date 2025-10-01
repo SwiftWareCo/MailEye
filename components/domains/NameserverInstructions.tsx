@@ -35,6 +35,10 @@ export function NameserverInstructions({
     }
   };
 
+  // Handle missing or empty nameservers
+  const nameservers = instructions.nameservers || [];
+  const hasNameservers = nameservers.length > 0;
+
   return (
     <div className="space-y-6">
       {/* Domain confirmation */}
@@ -52,12 +56,41 @@ export function NameserverInstructions({
             Cloudflare Nameservers
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Update your domain to use these nameservers at{' '}
-            {instructions.providerName}
+            {hasNameservers
+              ? `Update your domain to use these nameservers at ${instructions.providerName}`
+              : 'Nameservers will be assigned when the Cloudflare zone is created'}
           </p>
         </CardHeader>
         <CardContent className="space-y-3">
-          {instructions.nameservers.map((ns, index) => (
+          {!hasNameservers ? (
+            <Alert>
+              <AlertDescription className="text-sm">
+                <p className="font-semibold mb-2">⚠️ Nameservers Not Available</p>
+                <p className="text-muted-foreground">
+                  Cloudflare zone creation failed or is pending. Please ensure your
+                  Cloudflare API token has the following permissions:
+                </p>
+                <ul className="list-disc list-inside mt-2 space-y-1 text-muted-foreground">
+                  <li>Account → Account Settings → Read</li>
+                  <li>Account → Account Zone → Edit</li>
+                  <li>Zone → Zone → Edit</li>
+                  <li>Zone → DNS → Edit</li>
+                </ul>
+                <p className="mt-2 text-muted-foreground">
+                  Update your token at:{' '}
+                  <a
+                    href="https://dash.cloudflare.com/profile/api-tokens"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    Cloudflare API Tokens
+                  </a>
+                </p>
+              </AlertDescription>
+            </Alert>
+          ) : (
+            nameservers.map((ns, index) => (
             <div
               key={index}
               className="flex items-center justify-between rounded-lg bg-secondary/50 px-4 py-3"
@@ -82,7 +115,8 @@ export function NameserverInstructions({
                 )}
               </Button>
             </div>
-          ))}
+            ))
+          )}
         </CardContent>
       </Card>
 
@@ -142,9 +176,8 @@ export function NameserverInstructions({
           <p className="font-semibold mb-2">What happens next?</p>
           <p className="text-muted-foreground">
             After updating your nameservers, propagation can take anywhere from a
-            few minutes to 48 hours. We&apos;ll automatically verify your domain
-            once the nameservers have propagated. You can check the status in
-            your domains list.
+            few minutes to 48 hours. Use the &quot;Check Nameservers&quot; button
+            in the domain actions menu to verify when propagation is complete.
           </p>
         </AlertDescription>
       </Alert>

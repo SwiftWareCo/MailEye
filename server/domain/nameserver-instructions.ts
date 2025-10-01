@@ -10,26 +10,20 @@ import type {
 } from '@/lib/types/domain';
 
 /**
- * Cloudflare nameservers
- * Users need to point their domains to these nameservers
- */
-export const CLOUDFLARE_NAMESERVERS = [
-  'ns1.cloudflare.com',
-  'ns2.cloudflare.com',
-];
-
-/**
  * Generate nameserver instructions based on registrar
+ * @param provider - The domain registrar
+ * @param nameservers - Cloudflare-assigned nameservers for this domain
  */
 export function generateNameserverInstructions(
-  provider: DomainProvider
+  provider: DomainProvider,
+  nameservers: string[]
 ): NameserverInstructions {
   switch (provider) {
     case 'godaddy':
       return {
         provider,
         providerName: 'GoDaddy',
-        nameservers: CLOUDFLARE_NAMESERVERS,
+        nameservers,
         instructions: [
           'Log in to your GoDaddy account',
           'Navigate to "My Products" > "Domains"',
@@ -49,7 +43,7 @@ export function generateNameserverInstructions(
       return {
         provider,
         providerName: 'Namecheap',
-        nameservers: CLOUDFLARE_NAMESERVERS,
+        nameservers,
         instructions: [
           'Log in to your Namecheap account',
           'Click "Domain List" in the left sidebar',
@@ -68,7 +62,7 @@ export function generateNameserverInstructions(
       return {
         provider,
         providerName: 'Cloudflare',
-        nameservers: CLOUDFLARE_NAMESERVERS,
+        nameservers,
         instructions: [
           'Your domain is already registered with Cloudflare',
           'No nameserver changes needed!',
@@ -83,7 +77,7 @@ export function generateNameserverInstructions(
       return {
         provider,
         providerName: 'Google Domains',
-        nameservers: CLOUDFLARE_NAMESERVERS,
+        nameservers,
         instructions: [
           'Log in to Google Domains',
           'Select your domain',
@@ -102,7 +96,7 @@ export function generateNameserverInstructions(
       return {
         provider,
         providerName: 'Name.com',
-        nameservers: CLOUDFLARE_NAMESERVERS,
+        nameservers,
         instructions: [
           'Log in to your Name.com account',
           'Click on "My Domains"',
@@ -121,7 +115,7 @@ export function generateNameserverInstructions(
       return {
         provider,
         providerName: 'Hover',
-        nameservers: CLOUDFLARE_NAMESERVERS,
+        nameservers,
         instructions: [
           'Log in to your Hover account',
           'Go to "Domains" tab',
@@ -141,7 +135,7 @@ export function generateNameserverInstructions(
       return {
         provider: 'other',
         providerName: 'Your Registrar',
-        nameservers: CLOUDFLARE_NAMESERVERS,
+        nameservers,
         instructions: [
           'Log in to your domain registrar account',
           'Find your domain in the domain list',
@@ -158,18 +152,10 @@ export function generateNameserverInstructions(
 }
 
 /**
- * Get simplified instructions for copy-paste
- */
-export function getNameserverList(): string[] {
-  return CLOUDFLARE_NAMESERVERS;
-}
-
-/**
- * Validate if nameservers match Cloudflare
+ * Validate if nameservers match Cloudflare pattern
+ * Checks if nameservers end with .ns.cloudflare.com
  */
 export function areCloudflareNameservers(nameservers: string[]): boolean {
   const normalized = nameservers.map((ns) => ns.toLowerCase().trim());
-  return CLOUDFLARE_NAMESERVERS.every((cf) =>
-    normalized.some((ns) => ns.includes(cf.toLowerCase()))
-  );
+  return normalized.every((ns) => ns.endsWith('.ns.cloudflare.com'));
 }

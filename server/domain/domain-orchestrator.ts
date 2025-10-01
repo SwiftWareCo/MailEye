@@ -10,6 +10,7 @@ import { domains } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { validateDomain } from '@/lib/utils/domain-validation';
 import { generateNameserverInstructions } from './nameserver-instructions';
+import { createZone } from '@/lib/clients/cloudflare';
 import { randomBytes } from 'crypto';
 import type {
   DomainConnectionInput,
@@ -30,9 +31,10 @@ function generateVerificationToken(): string {
  *
  * Steps:
  * 1. Validate domain format and check for duplicates
- * 2. Create database record with pending_nameservers status
- * 3. Generate nameserver instructions based on provider
- * 4. Return domain record and instructions to UI
+ * 2. Create Cloudflare zone and get assigned nameservers
+ * 3. Create database record with zone ID and nameservers
+ * 4. Generate nameserver instructions based on provider
+ * 5. Return domain record and instructions to UI
  */
 export async function connectDomain(
   input: DomainConnectionInput,
@@ -55,13 +57,35 @@ export async function connectDomain(
     // Step 2: Generate verification token
     const verificationToken = generateVerificationToken();
 
-    // Step 3: Create domain record in database
+    // Step 3: Create Cloudflare zone
+    let cloudflareZoneId: string | null = null;
+    let assignedNameservers: string[] | null = null;
+
+    try {
+      const zone = await createZone(sanitizedDomain);
+      cloudflareZoneId = zone.id;
+      assignedNameservers = zone.name_servers || null;
+    } catch (error) {
+      console.error('Error creating Cloudflare zone:', error);
+      // Continue with domain creation even if Cloudflare zone creation fails
+      // This allows manual zone setup later
+      if (error instanceof Error) {
+        return {
+          success: false,
+          error: `Failed to create Cloudflare zone: ${error.message}`,
+        };
+      }
+    }
+
+    // Step 4: Create domain record in database
     const [newDomain] = await db
       .insert(domains)
       .values({
         userId,
         domain: sanitizedDomain,
         provider,
+        cloudflareZoneId,
+        assignedNameservers,
         verificationStatus: 'pending_nameservers',
         verificationToken,
         isActive: true,
@@ -70,14 +94,18 @@ export async function connectDomain(
         metadata: {
           connectionInitiatedAt: new Date().toISOString(),
           provider,
+          cloudflareZoneCreatedAt: cloudflareZoneId ? new Date().toISOString() : null,
         },
       })
       .returning();
 
-    // Step 4: Generate nameserver instructions
-    const instructions = generateNameserverInstructions(provider as DomainProvider);
+    // Step 5: Generate nameserver instructions with dynamic nameservers
+    const instructions = generateNameserverInstructions(
+      provider as DomainProvider,
+      assignedNameservers || []
+    );
 
-    // Step 5: Return success with domain and instructions
+    // Step 6: Return success with domain and instructions
     return {
       success: true,
       domain: newDomain,

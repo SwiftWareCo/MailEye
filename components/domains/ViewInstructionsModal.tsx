@@ -31,9 +31,10 @@ export function ViewInstructionsModal({
 }: ViewInstructionsModalProps) {
   const [open, setOpen] = useState(false);
 
-  // Generate instructions based on domain's provider
+  // Generate instructions using stored nameservers from domain
   const instructions = generateNameserverInstructions(
-    (domain.provider as DomainProvider) || 'other'
+    (domain.provider as DomainProvider) || 'other',
+    domain.assignedNameservers || []
   );
 
   return (

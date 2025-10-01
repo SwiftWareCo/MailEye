@@ -27,8 +27,8 @@ export const dnsRecords = pgTable("dns_records", {
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
+}, (table) => [
   // Critical indexes for performance
-  domainIdIdx: index("idx_dns_records_domain_id").on(table.domainId),
-  domainTypeIdx: index("idx_dns_records_domain_type").on(table.domainId, table.recordType),
-}));
+  index("idx_dns_records_domain_id").on(table.domainId),
+  index("idx_dns_records_domain_type").on(table.domainId, table.recordType),
+]);

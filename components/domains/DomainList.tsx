@@ -19,6 +19,9 @@ import {
   Globe,
   Calendar,
   FileText,
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -32,22 +35,61 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ViewInstructionsModal } from './ViewInstructionsModal';
 import { useDeleteDomain } from '@/lib/hooks/use-domains';
 import type { Domain } from '@/lib/types/domain';
+import type { NameserverVerificationResult } from '@/server/domain/nameserver-verifier';
 
 interface DomainListProps {
   userId: string;
   domains: Domain[];
   deleteDomainAction: (domainId: string) => Promise<{ success: boolean; error?: string }>;
+  verifyNameserversAction: (domainId: string) => Promise<NameserverVerificationResult>;
 }
 
 export function DomainList({
   userId,
   domains,
   deleteDomainAction,
+  verifyNameserversAction,
 }: DomainListProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [verifyingDomainId, setVerifyingDomainId] = useState<string | null>(null);
+  const [verificationResults, setVerificationResults] = useState<Record<string, { success: boolean; message: string; isVerified: boolean }>>({});
 
   // Use TanStack Query mutation for delete
   const deleteMutation = useDeleteDomain(userId, deleteDomainAction);
+
+  const handleVerifyNameservers = async (domainId: string) => {
+    setVerifyingDomainId(domainId);
+    try {
+      const result = await verifyNameserversAction(domainId);
+      setVerificationResults(prev => ({
+        ...prev,
+        [domainId]: {
+          success: result.success,
+          message: result.message,
+          isVerified: result.isVerified,
+        },
+      }));
+
+      // Refresh page after successful verification to update domain status
+      if (result.isVerified) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
+      setVerificationResults(prev => ({
+        ...prev,
+        [domainId]: {
+          success: false,
+          message: 'Failed to verify nameservers',
+          isVerified: false,
+        },
+      }));
+    } finally {
+      setVerifyingDomainId(null);
+    }
+  };
 
   const filteredDomains = domains.filter((domain) =>
     domain.domain.toLowerCase().includes(searchQuery.toLowerCase())
@@ -176,6 +218,27 @@ export function DomainList({
                       {domain.notes}
                     </p>
                   )}
+
+                  {/* Verification Status Message */}
+                  {verificationResults[domain.id] ? (
+                    <div className={`mt-3 flex items-center gap-2 text-sm ${
+                      verificationResults[domain.id].isVerified
+                        ? 'text-green-500'
+                        : 'text-yellow-500'
+                    }`}>
+                      {verificationResults[domain.id].isVerified ? (
+                        <CheckCircle2 className="h-4 w-4" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4" />
+                      )}
+                      <span>{verificationResults[domain.id].message}</span>
+                    </div>
+                  ) : domain.verificationStatus === 'pending_nameservers' && (
+                    <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                      <AlertCircle className="h-4 w-4" />
+                      <span>Waiting for nameserver propagation (can take up to 48 hours)</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Actions menu */}
@@ -191,6 +254,20 @@ export function DomainList({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {/* Check Nameservers - only for pending_nameservers status */}
+                    {domain.verificationStatus === 'pending_nameservers' && (
+                      <>
+                        <DropdownMenuItem
+                          onClick={() => handleVerifyNameservers(domain.id)}
+                          disabled={verifyingDomainId === domain.id}
+                        >
+                          <RefreshCw className={`h-4 w-4 mr-2 ${verifyingDomainId === domain.id ? 'animate-spin' : ''}`} />
+                          {verifyingDomainId === domain.id ? 'Checking...' : 'Check Nameservers'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+
                     <ViewInstructionsModal domain={domain}>
                       <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                         <FileText className="h-4 w-4 mr-2" />

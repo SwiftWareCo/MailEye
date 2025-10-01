@@ -24,10 +24,10 @@ export const smartleadConfig = pgTable("smartlead_config", {
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
+}, (table) => [
   // Critical indexes for performance
-  userIdIdx: uniqueIndex("idx_smartlead_config_user_id").on(table.userId),
-}));
+  uniqueIndex("idx_smartlead_config_user_id").on(table.userId),
+]);
 
 /**
  * Smartlead account mappings
@@ -51,11 +51,11 @@ export const smartleadAccountMappings = pgTable("smartlead_account_mappings", {
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
+}, (table) => [
   // Critical indexes for performance
-  emailAccountIdIdx: uniqueIndex("idx_smartlead_mappings_email_account_id").on(table.emailAccountId),
-  smartleadIdIdx: uniqueIndex("idx_smartlead_mappings_smartlead_id").on(table.smartleadEmailAccountId),
-}));
+  uniqueIndex("idx_smartlead_mappings_email_account_id").on(table.emailAccountId),
+  uniqueIndex("idx_smartlead_mappings_smartlead_id").on(table.smartleadEmailAccountId),
+]);
 
 /**
  * Smartlead sync logs
@@ -86,8 +86,8 @@ export const smartleadSyncLogs = pgTable("smartlead_sync_logs", {
   metadata: jsonb("metadata"),
 
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => ({
+}, (table) => [
   // Critical indexes for performance
-  userIdIdx: index("idx_smartlead_sync_logs_user_id").on(table.userId),
-  historyIdx: index("idx_smartlead_sync_logs_history").on(table.userId, table.startedAt),
-}));
+  index("idx_smartlead_sync_logs_user_id").on(table.userId),
+  index("idx_smartlead_sync_logs_history").on(table.userId, table.startedAt),
+]);
