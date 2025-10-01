@@ -1,6 +1,10 @@
 "use server"
 
 import { getServiceConfig } from '@/lib/config/api-keys';
+import { getZoneInfo, listDNSRecords } from '@/lib/clients/cloudflare';
+import { listDomains } from '@/lib/clients/godaddy';
+import { listCampaigns } from '@/lib/clients/smartlead';
+import { getGoogleWorkspaceConfig, getGoogleAdminClient } from '@/lib/clients/google-workspace';
 
 export interface TestResult {
   success: boolean;
@@ -8,35 +12,17 @@ export interface TestResult {
 }
 
 /**
- * Tests Cloudflare API connection
+ * Tests Cloudflare API connection using the official SDK
  */
 export async function testCloudflareConnection(): Promise<TestResult> {
   try {
     const config = getServiceConfig('cloudflare');
-
-    const response = await fetch(
-      `https://api.cloudflare.com/client/v4/zones/${config.zoneId}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${config.apiToken}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      return {
-        success: false,
-        message: `Cloudflare API error: ${error.errors?.[0]?.message || 'Unknown error'}`,
-      };
-    }
-
-    const data = await response.json();
+    const zoneInfo = await getZoneInfo(config.zoneId);
+    const records = await listDNSRecords(config.zoneId);
 
     return {
       success: true,
-      message: `Connected to Cloudflare zone: ${data.result?.name || 'Unknown'}`,
+      message: `Connected to Cloudflare zone: ${zoneInfo.name} (${records.length} DNS records)`,
     };
   } catch (error) {
     return {
@@ -47,31 +33,12 @@ export async function testCloudflareConnection(): Promise<TestResult> {
 }
 
 /**
- * Tests GoDaddy API connection
+ * Tests GoDaddy API connection using the client
  */
 export async function testGoDaddyConnection(): Promise<TestResult> {
   try {
     const config = getServiceConfig('godaddy');
-
-    const response = await fetch(
-      `${config.baseUrl}/v1/domains?limit=1`,
-      {
-        headers: {
-          'Authorization': `sso-key ${config.apiKey}:${config.apiSecret}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      return {
-        success: false,
-        message: `GoDaddy API error: ${error.message || 'Unknown error'}`,
-      };
-    }
-
-    const domains = await response.json();
+    const domains = await listDomains(1);
 
     return {
       success: true,
@@ -86,34 +53,49 @@ export async function testGoDaddyConnection(): Promise<TestResult> {
 }
 
 /**
- * Tests Smartlead API connection
+ * Tests Smartlead API connection using the client
  */
 export async function testSmartleadConnection(): Promise<TestResult> {
   try {
-    const config = getServiceConfig('smartlead');
-
-    const response = await fetch(
-      `https://server.smartlead.ai/api/v1/campaigns?api_key=${config.apiKey}`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      return {
-        success: false,
-        message: `Smartlead API error: ${error.message || 'Unknown error'}`,
-      };
-    }
-
-    const data = await response.json();
+    const campaigns = await listCampaigns();
 
     return {
       success: true,
-      message: `Connected to Smartlead. Found ${Array.isArray(data) ? data.length : 0} campaign(s)`,
+      message: `Connected to Smartlead. Found ${Array.isArray(campaigns) ? campaigns.length : 0} campaign(s)`,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Configuration error',
+    };
+  }
+}
+
+/**
+ * Tests Google Workspace API connection using the Admin SDK client
+ */
+export async function testGoogleWorkspaceConnection(): Promise<TestResult> {
+  try {
+    const config = getGoogleWorkspaceConfig();
+
+    if (!config) {
+      return {
+        success: false,
+        message: 'Google Workspace not configured',
+      };
+    }
+
+    const admin = getGoogleAdminClient();
+
+    // Try to list users with maxResults=1 to test connection
+    await admin.users.list({
+      customer: 'my_customer',
+      maxResults: 1,
+    });
+
+    return {
+      success: true,
+      message: `Connected to Google Workspace as ${config.adminEmail}. Domain has users.`,
     };
   } catch (error) {
     return {

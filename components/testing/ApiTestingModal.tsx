@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react"
-import { testCloudflareConnection, testGoDaddyConnection, testSmartleadConnection } from "@/server/infrastructure/infrastructure.actions"
+import { testCloudflareConnection, testGoDaddyConnection, testSmartleadConnection, testGoogleWorkspaceConnection } from "@/server/infrastructure/infrastructure.actions"
 import { testBasicConfiguration } from "@/server/crawlee/config.test.actions"
 import { Separator } from "@/components/ui/separator"
 
@@ -29,6 +29,7 @@ interface ApiTestingModalProps {
 export function ApiTestingModal({ open, onOpenChange }: ApiTestingModalProps) {
   const [cloudflareStatus, setCloudflareStatus] = useState<ServiceStatus>({ status: 'idle' });
   const [godaddyStatus, setGodaddyStatus] = useState<ServiceStatus>({ status: 'idle' });
+  const [googleWorkspaceStatus, setGoogleWorkspaceStatus] = useState<ServiceStatus>({ status: 'idle' });
   const [smartleadStatus, setSmartleadStatus] = useState<ServiceStatus>({ status: 'idle' });
   const [crawleeStatus, setCrawleeStatus] = useState<ServiceStatus>({ status: 'idle' });
 
@@ -62,6 +63,24 @@ export function ApiTestingModal({ open, onOpenChange }: ApiTestingModalProps) {
       }
     } catch (error) {
       setGodaddyStatus({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  };
+
+  const testGoogleWorkspace = async () => {
+    setGoogleWorkspaceStatus({ status: 'testing' });
+    try {
+      const result = await testGoogleWorkspaceConnection();
+
+      if (result.success) {
+        setGoogleWorkspaceStatus({ status: 'success', message: result.message });
+      } else {
+        setGoogleWorkspaceStatus({ status: 'error', message: result.message });
+      }
+    } catch (error) {
+      setGoogleWorkspaceStatus({
         status: 'error',
         message: error instanceof Error ? error.message : 'Unknown error'
       });
@@ -211,6 +230,33 @@ export function ApiTestingModal({ open, onOpenChange }: ApiTestingModalProps) {
                 size="sm"
               >
                 {godaddyStatus.status === 'testing' ? 'Testing...' : 'Test Connection'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Google Workspace */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Google Workspace</CardTitle>
+                  <CardDescription>User Provisioning & Management</CardDescription>
+                </div>
+                {getStatusBadge(googleWorkspaceStatus.status)}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {googleWorkspaceStatus.message && (
+                <p className={`text-sm mb-3 ${googleWorkspaceStatus.status === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {googleWorkspaceStatus.message}
+                </p>
+              )}
+              <Button
+                onClick={testGoogleWorkspace}
+                disabled={googleWorkspaceStatus.status === 'testing'}
+                size="sm"
+              >
+                {googleWorkspaceStatus.status === 'testing' ? 'Testing...' : 'Test Connection'}
               </Button>
             </CardContent>
           </Card>
