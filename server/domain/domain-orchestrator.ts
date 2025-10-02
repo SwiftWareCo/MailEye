@@ -35,10 +35,15 @@ function generateVerificationToken(): string {
  * 3. Create database record with zone ID and nameservers
  * 4. Generate nameserver instructions based on provider
  * 5. Return domain record and instructions to UI
+ *
+ * @param input - Domain connection input
+ * @param userId - User ID
+ * @param cloudflareCredentials - User's Cloudflare API credentials
  */
 export async function connectDomain(
   input: DomainConnectionInput,
-  userId: string
+  userId: string,
+  cloudflareCredentials: { apiToken: string; accountId: string }
 ): Promise<DomainConnectionResult> {
   try {
     // Step 1: Validate domain
@@ -57,12 +62,16 @@ export async function connectDomain(
     // Step 2: Generate verification token
     const verificationToken = generateVerificationToken();
 
-    // Step 3: Create Cloudflare zone
+    // Step 3: Create Cloudflare zone using user's credentials
     let cloudflareZoneId: string | null = null;
     let assignedNameservers: string[] | null = null;
 
     try {
-      const zone = await createZone(sanitizedDomain);
+      const zone = await createZone(
+        cloudflareCredentials.apiToken,
+        cloudflareCredentials.accountId,
+        sanitizedDomain
+      );
       cloudflareZoneId = zone.id;
       assignedNameservers = zone.name_servers || null;
     } catch (error) {

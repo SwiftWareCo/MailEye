@@ -4,55 +4,38 @@
  */
 
 import Cloudflare from 'cloudflare';
-import { getServiceConfig } from '@/lib/config/api-keys';
-
-let cloudflareClient: Cloudflare | null = null;
 
 /**
- * Gets or creates a singleton Cloudflare client instance
+ * Creates a Cloudflare client instance with user-specific credentials
+ * @param apiToken - User's Cloudflare API token
  */
-export function getCloudflareClient(): Cloudflare {
-  if (!cloudflareClient) {
-    const config = getServiceConfig('cloudflare');
-
-    cloudflareClient = new Cloudflare({
-      apiToken: config.apiToken,
-    });
-  }
-
-  return cloudflareClient;
+export function getCloudflareClient(apiToken: string): Cloudflare {
+  return new Cloudflare({
+    apiToken,
+  });
 }
 
 /**
  * Gets Cloudflare zone information
+ * @param apiToken - User's Cloudflare API token
+ * @param zoneId - Cloudflare zone ID
  */
-export async function getZoneInfo(zoneId?: string) {
-  const client = getCloudflareClient();
-  const config = getServiceConfig('cloudflare');
-  const id = zoneId || config.zoneId;
-
-  if (!id) {
-    throw new Error('Zone ID is required');
-  }
-
-  return await client.zones.get({ zone_id: id });
+export async function getZoneInfo(apiToken: string, zoneId: string) {
+  const client = getCloudflareClient(apiToken);
+  return await client.zones.get({ zone_id: zoneId });
 }
 
 /**
  * Lists all DNS records for a zone
+ * @param apiToken - User's Cloudflare API token
+ * @param zoneId - Cloudflare zone ID
  */
-export async function listDNSRecords(zoneId?: string) {
-  const client = getCloudflareClient();
-  const config = getServiceConfig('cloudflare');
-  const id = zoneId || config.zoneId;
-
-  if (!id) {
-    throw new Error('Zone ID is required');
-  }
+export async function listDNSRecords(apiToken: string, zoneId: string) {
+  const client = getCloudflareClient(apiToken);
 
   // Iterate through paginated results
   const records = [];
-  for await (const record of client.dns.records.list({ zone_id: id })) {
+  for await (const record of client.dns.records.list({ zone_id: zoneId })) {
     records.push(record);
   }
   return records;
@@ -60,8 +43,12 @@ export async function listDNSRecords(zoneId?: string) {
 
 /**
  * Creates a new DNS record
+ * @param apiToken - User's Cloudflare API token
+ * @param zoneId - Cloudflare zone ID
+ * @param record - DNS record details
  */
 export async function createDNSRecord(
+  apiToken: string,
   zoneId: string,
   record: {
     type: 'A' | 'AAAA' | 'CNAME' | 'TXT' | 'MX' | 'NS';
@@ -72,7 +59,7 @@ export async function createDNSRecord(
     proxied?: boolean;
   }
 ) {
-  const client = getCloudflareClient();
+  const client = getCloudflareClient(apiToken);
 
   // Build the record object with proper typing
   const recordData: any = {
@@ -96,24 +83,28 @@ export async function createDNSRecord(
 
 /**
  * Deletes a DNS record
+ * @param apiToken - User's Cloudflare API token
+ * @param zoneId - Cloudflare zone ID
+ * @param recordId - DNS record ID to delete
  */
-export async function deleteDNSRecord(zoneId: string, recordId: string) {
-  const client = getCloudflareClient();
-
+export async function deleteDNSRecord(apiToken: string, zoneId: string, recordId: string) {
+  const client = getCloudflareClient(apiToken);
   return await client.dns.records.delete(recordId, { zone_id: zoneId });
 }
 
 /**
  * Creates a new zone in Cloudflare
  * Returns zone data including assigned nameservers
+ * @param apiToken - User's Cloudflare API token
+ * @param accountId - User's Cloudflare Account ID
+ * @param domainName - Domain name to create zone for
  */
-export async function createZone(domainName: string) {
-  const client = getCloudflareClient();
-  const config = getServiceConfig('cloudflare');
+export async function createZone(apiToken: string, accountId: string, domainName: string) {
+  const client = getCloudflareClient(apiToken);
 
   try {
     const zone = await client.zones.create({
-      account: { id: config.accountId },
+      account: { id: accountId },
       name: domainName,
       type: 'full',
     });
@@ -127,11 +118,9 @@ export async function createZone(domainName: string) {
       throw new Error(
         `Cloudflare API token lacks required permissions to create zones.\n\n` +
         `Required permissions:\n` +
-        `- Account → Account Settings → Read\n` +
-        `- Account → Account Zone → Edit (CRITICAL for zone creation)\n` +
         `- Zone → Zone → Edit\n` +
         `- Zone → DNS → Edit\n\n` +
-        `Create a new token with these permissions at:\n` +
+        `Update your token permissions at:\n` +
         `https://dash.cloudflare.com/profile/api-tokens`
       );
     }
@@ -148,10 +137,61 @@ export async function createZone(domainName: string) {
 
 /**
  * Gets nameservers for a specific zone
+ * @param apiToken - User's Cloudflare API token
+ * @param zoneId - Cloudflare zone ID
  */
-export async function getZoneNameservers(zoneId: string): Promise<string[]> {
-  const client = getCloudflareClient();
-
+export async function getZoneNameservers(apiToken: string, zoneId: string): Promise<string[]> {
+  const client = getCloudflareClient(apiToken);
   const zone = await client.zones.get({ zone_id: zoneId });
   return zone.name_servers || [];
+}
+
+/**
+ * Lists all zones in the user's Cloudflare account
+ * @param apiToken - User's Cloudflare API token
+ * @param accountId - User's Cloudflare Account ID
+ */
+export async function listZones(apiToken: string, accountId: string) {
+  const client = getCloudflareClient(apiToken);
+
+  const zones = [];
+  for await (const zone of client.zones.list({ account: { id: accountId } })) {
+    zones.push(zone);
+  }
+
+  return zones;
+}
+
+/**
+ * Deletes a zone from Cloudflare
+ * @param apiToken - User's Cloudflare API token
+ * @param zoneId - Cloudflare zone ID to delete
+ */
+export async function deleteZone(apiToken: string, zoneId: string) {
+  const client = getCloudflareClient(apiToken);
+
+  try {
+    return await client.zones.delete({ zone_id: zoneId });
+  } catch (error: any) {
+    const errorMessage = error.message || JSON.stringify(error);
+    throw new Error(`Failed to delete zone: ${errorMessage}`);
+  }
+}
+
+/**
+ * Gets the current status of a Cloudflare zone
+ * @param apiToken - User's Cloudflare API token
+ * @param zoneId - Cloudflare zone ID
+ * @returns Zone status (active, pending, initializing, moved, deleted, etc.)
+ */
+export async function getZoneStatus(apiToken: string, zoneId: string): Promise<string> {
+  const client = getCloudflareClient(apiToken);
+
+  try {
+    const zone = await client.zones.get({ zone_id: zoneId });
+    return zone.status || 'unknown';
+  } catch (error: any) {
+    const errorMessage = error.message || JSON.stringify(error);
+    throw new Error(`Failed to get zone status: ${errorMessage}`);
+  }
 }

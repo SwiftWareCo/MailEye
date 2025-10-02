@@ -230,8 +230,42 @@ theme = {
 - **User Sync Table**: Stack Auth syncs users to `neon_auth.users_sync` table automatically
 - **Custom User Data**: Stack Auth provides three metadata types:
   - `clientMetadata`: Client readable/writable (non-sensitive data)
-  - `serverMetadata`: Server-only access (sensitive data)
+  - `serverMetadata`: Server-only access (sensitive data like API tokens)
   - `clientReadOnlyMetadata`: Client readable, server writable (subscription status, etc.)
+
+#### Stack Auth Usage Pattern:
+- **IMPORTANT**: `stackServerApp.getUser()` does NOT accept userId parameter - it gets the currently authenticated user from session
+- **For updating metadata**: Use `stackServerApp.getUser()` which returns a Stack user object with `.update()` method
+  ```typescript
+  import { stackServerApp } from '@/stack/server';
+
+  // Gets currently authenticated user from session (NO userId parameter!)
+  const user = await stackServerApp.getUser();
+
+  if (!user) {
+    throw new Error('Not authenticated');
+  }
+
+  // Optional security check if you have userId from binding
+  if (user.id !== userId) {
+    throw new Error('Unauthorized');
+  }
+
+  await user.update({
+    serverMetadata: {
+      apiKey: "encrypted_value",
+      accountId: "user_account"
+    }
+  });
+  ```
+- **For reading only**: Can use `getUserWithMetadata()` from `@/server/auth/auth.data` if you don't need to update
+  ```typescript
+  import { getUserWithMetadata } from '@/server/auth/auth.data';
+
+  const user = await getUserWithMetadata();
+  const apiKey = user?.serverMetadata?.apiKey;
+  ```
+- **Key difference**: `stackServerApp.getUser()` returns Stack SDK user object (has `.update()`), `getUserWithMetadata()` returns plain object (read-only)
 
 #### User Data Strategy:
 - **Primary**: Use Stack Auth metadata for user preferences and settings

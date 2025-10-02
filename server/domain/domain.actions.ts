@@ -13,6 +13,7 @@ import {
   checkNameserversOnly,
   type NameserverVerificationResult,
 } from './nameserver-verifier';
+import { getUserCloudflareCredentials } from '../cloudflare/cloudflare.actions';
 import { db } from '@/lib/db';
 import { domains } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -33,8 +34,18 @@ export async function connectDomainAction(
   input: DomainConnectionInput
 ): Promise<DomainConnectionResult> {
   try {
+    // Get user's Cloudflare credentials from session
+    const cloudflareCredentials = await getUserCloudflareCredentials();
+
+    if (!cloudflareCredentials) {
+      return {
+        success: false,
+        error: 'Cloudflare credentials not found. Please connect your Cloudflare account first.',
+      };
+    }
+
     // Call orchestrator to handle domain connection
-    const result = await connectDomain(input, userId);
+    const result = await connectDomain(input, userId, cloudflareCredentials);
     return result;
   } catch (error) {
     console.error('Error in connectDomainAction:', error);
@@ -47,6 +58,7 @@ export async function connectDomainAction(
 
 /**
  * Server Action: Delete a domain
+ * Deletes both the database record AND the Cloudflare zone
  *
  * @param userId - User ID (bound from Server Component)
  * @param domainId - Domain ID to delete
@@ -56,7 +68,40 @@ export async function deleteDomainAction(
   domainId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Delete domain (with user ownership check)
+    // First, get the domain to check if it has a Cloudflare zone
+    const [domain] = await db
+      .select()
+      .from(domains)
+      .where(and(eq(domains.id, domainId), eq(domains.userId, userId)))
+      .limit(1);
+
+    if (!domain) {
+      return {
+        success: false,
+        error: 'Domain not found or you do not have permission to delete it',
+      };
+    }
+
+    // If domain has a Cloudflare zone, delete it first
+    if (domain.cloudflareZoneId) {
+      try {
+        const cloudflareCredentials = await getUserCloudflareCredentials();
+
+        if (cloudflareCredentials) {
+          const { deleteZone } = await import('@/lib/clients/cloudflare');
+          await deleteZone(cloudflareCredentials.apiToken, domain.cloudflareZoneId);
+          console.log(`[Domain] Deleted Cloudflare zone ${domain.cloudflareZoneId} for domain ${domain.domain}`);
+        } else {
+          console.warn(`[Domain] Could not delete Cloudflare zone - credentials not found`);
+        }
+      } catch (error) {
+        console.error('Error deleting Cloudflare zone:', error);
+        // Continue with database deletion even if Cloudflare deletion fails
+        // This prevents orphaned DB records if zone was already deleted manually
+      }
+    }
+
+    // Delete domain from database
     const result = await db
       .delete(domains)
       .where(and(eq(domains.id, domainId), eq(domains.userId, userId)))
@@ -65,9 +110,11 @@ export async function deleteDomainAction(
     if (result.length === 0) {
       return {
         success: false,
-        error: 'Domain not found or you do not have permission to delete it',
+        error: 'Failed to delete domain from database',
       };
     }
+
+    console.log(`[Domain] Deleted domain ${domain.domain} (ID: ${domainId})`);
 
     return { success: true };
   } catch (error) {

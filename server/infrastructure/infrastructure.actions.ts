@@ -1,8 +1,5 @@
 "use server"
 
-import { getServiceConfig } from '@/lib/config/api-keys';
-import { getZoneInfo, listDNSRecords } from '@/lib/clients/cloudflare';
-import { listDomains } from '@/lib/clients/godaddy';
 import { listCampaigns } from '@/lib/clients/smartlead';
 import { getGoogleWorkspaceConfig, getGoogleAdminClient } from '@/lib/clients/google-workspace';
 
@@ -13,43 +10,14 @@ export interface TestResult {
 
 /**
  * Tests Cloudflare API connection using the official SDK
+ * NOTE: Cloudflare is now user-specific, so this test is deprecated
+ * Each user connects their own Cloudflare account via the domains page
  */
 export async function testCloudflareConnection(): Promise<TestResult> {
-  try {
-    const config = getServiceConfig('cloudflare');
-    const zoneInfo = await getZoneInfo(config.zoneId);
-    const records = await listDNSRecords(config.zoneId);
-
-    return {
-      success: true,
-      message: `Connected to Cloudflare zone: ${zoneInfo.name} (${records.length} DNS records)`,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Configuration error',
-    };
-  }
-}
-
-/**
- * Tests GoDaddy API connection using the client
- */
-export async function testGoDaddyConnection(): Promise<TestResult> {
-  try {
-    const config = getServiceConfig('godaddy');
-    const domains = await listDomains(1);
-
-    return {
-      success: true,
-      message: `Connected to GoDaddy (${config.environment}). Found ${Array.isArray(domains) ? domains.length : 0} domain(s)`,
-    };
-  } catch (error) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Configuration error',
-    };
-  }
+  return {
+    success: false,
+    message: 'Cloudflare is now user-specific. Connect your account in the Domains page.',
+  };
 }
 
 /**

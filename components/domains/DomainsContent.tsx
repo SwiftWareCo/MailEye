@@ -30,14 +30,35 @@ export function DomainsContent({
 }: DomainsContentProps) {
   // Use TanStack Query for reactive state management
   const { data: domains } = useDomains(initialDomains, userId);
+
+  // Calculate stats
+  const totalDomains = domains.length;
+  const verifiedDomains = domains.filter((d) => d.verificationStatus === 'verified').length;
+  const pendingDomains = domains.filter(
+    (d) =>
+      d.verificationStatus === 'pending' ||
+      d.verificationStatus === 'pending_nameservers' ||
+      d.verificationStatus === 'verifying'
+  ).length;
+
   return (
     <div className="space-y-6">
-      {/* Page header with action button */}
+      {/* Page header with inline stats and action button */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Domains</h1>
           <p className="text-muted-foreground mt-2">
-            Manage your domains and email infrastructure
+            {totalDomains > 0 ? (
+              <>
+                <span className="font-medium text-foreground">{totalDomains} total</span>
+                {' · '}
+                <span className="text-green-500">{verifiedDomains} verified</span>
+                {' · '}
+                <span className="text-yellow-500">{pendingDomains} pending</span>
+              </>
+            ) : (
+              'Manage your domains and email infrastructure'
+            )}
           </p>
         </div>
         <DomainConnectionModal userId={userId} connectDomainAction={connectDomainAction} />

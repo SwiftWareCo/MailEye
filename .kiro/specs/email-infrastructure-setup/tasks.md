@@ -145,7 +145,7 @@ This document breaks down the implementation of the Email Infrastructure Setup T
 
 ### Phase 2: Domain Management & Nameserver Verification
 
-- [ ] **2.1** Domain Validation Utilities
+- [x] **2.1** Domain Validation Utilities
   - **Description**: Create domain format validation, sanitization, and duplicate checking utilities
   - **Deliverables**:
     - `lib/utils/domain-validation.ts` - Domain validation functions
@@ -154,7 +154,7 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 1 hour
   - **Dependencies**: 1.1
 
-- [ ] **2.2** Domain Connection Service - Basic Setup
+- [x] **2.2** Domain Connection Service - Basic Setup
   - **Description**: Implement domain connection initiation with database record creation and nameserver instructions
   - **Deliverables**:
     - `server/domain/domain-orchestrator.ts` - Domain orchestrator (basic)
@@ -163,7 +163,7 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 1.5 hours
   - **Dependencies**: 1.2, 2.1
 
-- [ ] **2.3** Nameserver Verification Service
+- [x] **2.3** Nameserver Verification Service
   - **Description**: Implement DNS lookup to verify nameservers are pointing to Cloudflare
   - **Deliverables**:
     - `server/domain/nameserver-verifier.ts` - Nameserver verification logic
@@ -172,7 +172,7 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 1.5 hours
   - **Dependencies**: 2.2
 
-- [ ] **2.4** Cloudflare Zone Creation
+- [x] **2.4** Cloudflare Zone Creation
   - **Description**: Implement Cloudflare zone creation via API when nameservers are verified
   - **Deliverables**:
     - `server/dns/cloudflare-zone-manager.ts` - Zone creation and management

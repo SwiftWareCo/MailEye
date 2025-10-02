@@ -9,20 +9,12 @@ export interface CloudflareConfig {
   zoneId?: string; // Optional: zones are created per-domain
 }
 
-export interface GoDaddyConfig {
-  apiKey: string;
-  apiSecret: string;
-  environment: 'ote' | 'production';
-  baseUrl: string;
-}
-
 export interface SmartleadConfig {
   apiKey: string;
 }
 
 export interface EmailInfrastructureConfig {
   cloudflare: CloudflareConfig;
-  godaddy: GoDaddyConfig;
   smartlead: SmartleadConfig;
 }
 
@@ -54,34 +46,6 @@ function validateCloudflareConfig(): CloudflareConfig {
   };
 }
 
-/**
- * Validates that all required GoDaddy environment variables are present
- */
-function validateGoDaddyConfig(): GoDaddyConfig {
-  const apiKey = process.env.GODADDY_API_KEY;
-  const apiSecret = process.env.GODADDY_API_SECRET;
-  const environment = (process.env.GODADDY_ENVIRONMENT || 'ote') as
-    | 'ote'
-    | 'production';
-
-  if (!apiKey || !apiSecret) {
-    throw new ApiKeyValidationError(
-      'Missing GoDaddy configuration. Required: GODADDY_API_KEY, GODADDY_API_SECRET'
-    );
-  }
-
-  const baseUrl =
-    environment === 'ote'
-      ? 'https://api.ote-godaddy.com'
-      : 'https://api.godaddy.com';
-
-  return {
-    apiKey,
-    apiSecret,
-    environment,
-    baseUrl,
-  };
-}
 
 /**
  * Validates that all required Smartlead environment variables are present
@@ -107,7 +71,6 @@ function validateSmartleadConfig(): SmartleadConfig {
 export function validateEmailInfrastructureConfig(): EmailInfrastructureConfig {
   return {
     cloudflare: validateCloudflareConfig(),
-    godaddy: validateGoDaddyConfig(),
     smartlead: validateSmartleadConfig(),
   };
 }
@@ -116,15 +79,12 @@ export function validateEmailInfrastructureConfig(): EmailInfrastructureConfig {
  * Checks if a specific service configuration is available
  */
 export function isServiceConfigured(
-  service: 'cloudflare' | 'godaddy' | 'smartlead'
+  service: 'cloudflare' | 'smartlead'
 ): boolean {
   try {
     switch (service) {
       case 'cloudflare':
         validateCloudflareConfig();
-        return true;
-      case 'godaddy':
-        validateGoDaddyConfig();
         return true;
       case 'smartlead':
         validateSmartleadConfig();
@@ -141,16 +101,13 @@ export function isServiceConfigured(
  * Gets the configuration for a specific service
  */
 export function getServiceConfig(service: 'cloudflare'): CloudflareConfig;
-export function getServiceConfig(service: 'godaddy'): GoDaddyConfig;
 export function getServiceConfig(service: 'smartlead'): SmartleadConfig;
 export function getServiceConfig(
-  service: 'cloudflare' | 'godaddy' | 'smartlead'
+  service: 'cloudflare' | 'smartlead'
 ) {
   switch (service) {
     case 'cloudflare':
       return validateCloudflareConfig();
-    case 'godaddy':
-      return validateGoDaddyConfig();
     case 'smartlead':
       return validateSmartleadConfig();
     default:

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react"
-import { testCloudflareConnection, testGoDaddyConnection, testSmartleadConnection, testGoogleWorkspaceConnection } from "@/server/infrastructure/infrastructure.actions"
+import { testCloudflareConnection, testSmartleadConnection, testGoogleWorkspaceConnection } from "@/server/infrastructure/infrastructure.actions"
 import { testBasicConfiguration } from "@/server/crawlee/config.test.actions"
 import { Separator } from "@/components/ui/separator"
 
@@ -28,7 +28,6 @@ interface ApiTestingModalProps {
 
 export function ApiTestingModal({ open, onOpenChange }: ApiTestingModalProps) {
   const [cloudflareStatus, setCloudflareStatus] = useState<ServiceStatus>({ status: 'idle' });
-  const [godaddyStatus, setGodaddyStatus] = useState<ServiceStatus>({ status: 'idle' });
   const [googleWorkspaceStatus, setGoogleWorkspaceStatus] = useState<ServiceStatus>({ status: 'idle' });
   const [smartleadStatus, setSmartleadStatus] = useState<ServiceStatus>({ status: 'idle' });
   const [crawleeStatus, setCrawleeStatus] = useState<ServiceStatus>({ status: 'idle' });
@@ -51,23 +50,6 @@ export function ApiTestingModal({ open, onOpenChange }: ApiTestingModalProps) {
     }
   };
 
-  const testGoDaddy = async () => {
-    setGodaddyStatus({ status: 'testing' });
-    try {
-      const result = await testGoDaddyConnection();
-
-      if (result.success) {
-        setGodaddyStatus({ status: 'success', message: result.message });
-      } else {
-        setGodaddyStatus({ status: 'error', message: result.message });
-      }
-    } catch (error) {
-      setGodaddyStatus({
-        status: 'error',
-        message: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  };
 
   const testGoogleWorkspace = async () => {
     setGoogleWorkspaceStatus({ status: 'testing' });
@@ -203,33 +185,6 @@ export function ApiTestingModal({ open, onOpenChange }: ApiTestingModalProps) {
                 size="sm"
               >
                 {cloudflareStatus.status === 'testing' ? 'Testing...' : 'Test Connection'}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* GoDaddy */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">GoDaddy</CardTitle>
-                  <CardDescription>Domain Registration & Management</CardDescription>
-                </div>
-                {getStatusBadge(godaddyStatus.status)}
-              </div>
-            </CardHeader>
-            <CardContent>
-              {godaddyStatus.message && (
-                <p className={`text-sm mb-3 ${godaddyStatus.status === 'error' ? 'text-destructive' : 'text-muted-foreground'}`}>
-                  {godaddyStatus.message}
-                </p>
-              )}
-              <Button
-                onClick={testGoDaddy}
-                disabled={godaddyStatus.status === 'testing'}
-                size="sm"
-              >
-                {godaddyStatus.status === 'testing' ? 'Testing...' : 'Test Connection'}
               </Button>
             </CardContent>
           </Card>
