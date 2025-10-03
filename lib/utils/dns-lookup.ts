@@ -228,3 +228,71 @@ export async function queryCNAMERecords(
     };
   }
 }
+
+/**
+ * Query A records (IPv4) for a domain
+ * Used for SPF "a" mechanism resolution
+ */
+export async function queryARecords(
+  domain: string
+): Promise<DNSQueryResult<string>> {
+  try {
+    const resolver = new Resolver();
+    const resolve4 = promisify(resolver.resolve4.bind(resolver));
+
+    const aRecords = await resolve4(domain);
+
+    return {
+      success: true,
+      records: aRecords,
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      return {
+        success: false,
+        records: [],
+        error: error.message,
+      };
+    }
+
+    return {
+      success: false,
+      records: [],
+      error: 'Unknown DNS A query error',
+    };
+  }
+}
+
+/**
+ * Query AAAA records (IPv6) for a domain
+ * Used for SPF "a" mechanism resolution (IPv6)
+ */
+export async function queryAAAARecords(
+  domain: string
+): Promise<DNSQueryResult<string>> {
+  try {
+    const resolver = new Resolver();
+    const resolve6 = promisify(resolver.resolve6.bind(resolver));
+
+    const aaaaRecords = await resolve6(domain);
+
+    return {
+      success: true,
+      records: aaaaRecords,
+    };
+  } catch (error) {
+    if (error instanceof Error) {
+      return {
+        success: false,
+        records: [],
+        error: error.message,
+      };
+    }
+
+    return {
+      success: false,
+      records: [],
+      error: 'Unknown DNS AAAA query error',
+    };
+  }
+}
