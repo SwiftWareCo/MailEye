@@ -183,6 +183,66 @@ export interface DKIMRecord {
 }
 
 /**
+ * DKIM key length options
+ */
+export type DKIMKeyLength = 1024 | 2048 | 4096;
+
+/**
+ * Email provider for DKIM generation
+ */
+export type EmailProvider = 'google_workspace' | 'microsoft365' | 'custom';
+
+/**
+ * DKIM generation configuration (Task 3.5)
+ */
+export interface DKIMGenerationConfig {
+  domain: string;
+  provider: EmailProvider;
+  selector?: string;            // Default: "google" for GWS, "selector1" for M365
+  keyLength?: DKIMKeyLength;    // Default: 2048
+  splitForDNSLimit?: boolean;   // Split long keys for 255-char DNS limit (default: true)
+}
+
+/**
+ * Generated DKIM record result (Task 3.5)
+ */
+export interface DKIMGenerationResult {
+  success: boolean;
+  domain: string;
+  selector: string;
+  recordName: string;           // e.g., "google._domainkey.example.com"
+  recordType: 'TXT';
+  recordValue: string;          // Complete TXT record value
+  publicKey: string;            // Raw public key
+  keyLength: number;
+  splitValues?: string[];       // Split values for DNS providers with 255-char limit
+  characterCount: number;       // Total character count
+  requiresSplitting: boolean;   // true if > 255 chars
+  errors: string[];
+  warnings: string[];
+  generatedAt: Date;
+}
+
+/**
+ * Google Workspace DKIM configuration
+ */
+export interface GoogleWorkspaceDKIMConfig {
+  domain: string;
+  prefix: string;               // Default: "google"
+  keyBitLength: 2048;           // Google supports 1024 or 2048
+}
+
+/**
+ * DKIM DNS TXT record for Cloudflare creation
+ */
+export interface DKIMDNSRecord {
+  name: string;                 // Record name (e.g., "google._domainkey")
+  type: 'TXT';
+  content: string;              // TXT record value
+  ttl: number;                  // Time to live (default: 3600)
+}
+
+/**
  * MX record priority
  */
 export interface MXRecord {

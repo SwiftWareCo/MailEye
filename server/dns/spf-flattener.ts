@@ -18,7 +18,7 @@ import {
   ResolvedInclude,
 } from '@/lib/types/dns';
 import { resolveAllIPsFromSPF } from './spf-ip-resolver';
-import { validateSPFSyntax, parseSPFRecord, getSPFQualifier } from './spf-parser';
+import { validateSPFSyntax, parseSPFRecord } from './spf-parser';
 import { db } from '@/lib/db';
 import { spfRecords } from '@/lib/db/schema/spf-dmarc';
 import { eq } from 'drizzle-orm';

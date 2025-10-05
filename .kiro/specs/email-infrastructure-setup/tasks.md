@@ -231,11 +231,14 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 2 hours
   - **Dependencies**: 3.3, 1.4
 
-- [ ] **3.5** Google Workspace DKIM Key Generation
+- [x] **3.5** Google Workspace DKIM Key Generation
   - **Description**: Generate DKIM TXT records for Google Workspace with 2048-bit keys
   - **Deliverables**:
-    - `server/dns/dkim-generator.ts` - DKIM record generator
-    - Google Workspace-specific DKIM configuration
+    - `server/dns/dkim-generator.ts` - DKIM record generator ✓
+    - Google Workspace-specific DKIM configuration ✓
+    - 255-character DNS TXT limit handling (string splitting) ✓
+    - `lib/types/dns.ts` - DKIM type definitions ✓
+    - Unit tests (35 tests passing) ✓
   - **Requirements**: DNS Automation Requirements (R3.7)
   - **Estimated Effort**: 1 hour
   - **Dependencies**: 1.3
