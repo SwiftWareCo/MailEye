@@ -243,7 +243,7 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 1 hour
   - **Dependencies**: 1.3
 
-- [ ] **3.6** DMARC Record Generation
+- [x] **3.6** DMARC Record Generation
   - **Description**: Create DMARC TXT records with configurable policy (none/quarantine/reject)
   - **Deliverables**:
     - `server/dns/dmarc-generator.ts` - DMARC record generator
@@ -252,11 +252,12 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 1 hour
   - **Dependencies**: 1.4
 
-- [ ] **3.7** MX Record Generation for Google Workspace
+- [x] **3.7** MX Record Generation for Google Workspace
   - **Description**: Create MX records with correct priority values for Google Workspace mail servers
   - **Deliverables**:
-    - `server/dns/mx-generator.ts` - MX record generator
-    - Google Workspace MX configuration (5 records)
+    - `server/dns/mx-generator.ts` - MX record generator ✓
+    - Google Workspace MX configuration (modern single record: smtp.google.com) ✓
+    - Unit tests (43 tests passing) ✓
   - **Requirements**: DNS Automation Requirements (R3.9)
   - **Estimated Effort**: 45 minutes
   - **Dependencies**: 1.3
@@ -743,18 +744,17 @@ A task is considered "Done" when:
 - ✅ Phase 1: Database Schema & Core Types (8/8 tasks - 100%)
 - ✅ Phase 2: Domain Management & Nameserver Verification (4/4 core tasks - 100%)
 
-**Current Phase**: Phase 3 - DNS Record Management & SPF Flattening (4/10 tasks complete)
+**Current Phase**: Phase 3 - DNS Record Management & SPF Flattening (7/10 tasks complete - 70%)
 
-**Overall Progress**: 21/55 tasks completed (38%)
+**Overall Progress**: 24/55 tasks completed (44%)
 
-**Last Updated**: 2025-10-03
+**Last Updated**: 2025-10-04
 
 **Recent Completion**:
-- ✅ Task 3.1: SPF Record Parser (41 tests passing)
-- ✅ Task 3.2: SPF DNS Lookup Resolver (26 tests passing)
-- ✅ Task 3.3: SPF IP Address Resolution (17 tests passing)
-- ✅ Task 3.4: SPF Record Flattening Service (19 tests passing)
+- ✅ Task 3.5: Google Workspace DKIM Key Generation (35 tests passing)
+- ✅ Task 3.6: DMARC Record Generation (policy progression validation)
+- ✅ Task 3.7: MX Record Generation for Google Workspace (43 tests passing)
 
-**Next Steps**: Continue Phase 3 tasks (3.5-3.10) for complete DNS automation
+**Next Steps**: Continue Phase 3 tasks (3.8-3.10) for complete DNS automation
 
-**Estimated Completion**: 3-4 weeks for remaining implementation
+**Estimated Completion**: 2-3 weeks for remaining implementation

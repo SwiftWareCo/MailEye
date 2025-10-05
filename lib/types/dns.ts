@@ -345,3 +345,36 @@ export interface DMARCPolicyProgression {
   recommendations: string[];
   warnings: string[];
 }
+
+/**
+ * MX generation configuration (Task 3.7)
+ */
+export interface MXGenerationConfig {
+  domain: string;
+  provider?: 'google_workspace' | 'microsoft365' | 'custom';  // Default: google_workspace
+  customRecords?: MXRecord[];           // For custom provider
+}
+
+/**
+ * Generated MX record result (Task 3.7)
+ */
+export interface MXGenerationResult {
+  success: boolean;
+  domain: string;
+  recordType: 'MX';
+  records: MXRecord[];                  // MX records generated (1 for Google Workspace)
+  errors: string[];
+  warnings: string[];
+  generatedAt: Date;
+}
+
+/**
+ * MX DNS record for Cloudflare creation
+ */
+export interface MXDNSRecord {
+  name: string;                         // Record name (typically "@" for root domain)
+  type: 'MX';
+  priority: number;                     // MX priority (lower = higher priority)
+  content: string;                      // Mail server hostname
+  ttl: number;                          // Time to live (default: 3600)
+}
