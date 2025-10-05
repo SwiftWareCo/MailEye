@@ -378,3 +378,44 @@ export interface MXDNSRecord {
   content: string;                      // Mail server hostname
   ttl: number;                          // Time to live (default: 3600)
 }
+
+/**
+ * Tracking domain provider (Task 3.8)
+ */
+export type TrackingProvider = 'smartlead';
+
+/**
+ * Tracking domain configuration (Task 3.8)
+ */
+export interface TrackingDomainConfig {
+  domain: string;                       // e.g., "yourcompany.com"
+  trackingSubdomain: string;            // e.g., "emailtracking", "track", "link"
+  provider: TrackingProvider;           // "smartlead" (future: "instantly", etc.)
+}
+
+/**
+ * Generated tracking domain result (Task 3.8)
+ */
+export interface TrackingDomainResult {
+  success: boolean;
+  domain: string;
+  trackingSubdomain: string;
+  fullTrackingDomain: string;           // e.g., "emailtracking.yourcompany.com"
+  trackingURL: string;                  // e.g., "http://emailtracking.yourcompany.com"
+  cnameTarget: string;                  // e.g., "open.sleadtrack.com"
+  dnsRecord: TrackingDomainDNSRecord;
+  errors: string[];
+  warnings: string[];
+  generatedAt: Date;
+}
+
+/**
+ * Tracking domain CNAME DNS record for Cloudflare creation (Task 3.8)
+ */
+export interface TrackingDomainDNSRecord {
+  name: string;                         // Subdomain only (e.g., "emailtracking")
+  type: 'CNAME';
+  content: string;                      // Target (e.g., "open.sleadtrack.com")
+  ttl: number;                          // Typically 3600
+  proxied: boolean;                     // false for email-related records
+}
