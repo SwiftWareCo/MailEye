@@ -284,3 +284,64 @@ export interface EmailAuthCompliance {
   issues: string[];
   recommendations: string[];
 }
+
+/**
+ * DMARC generation configuration (Task 3.6)
+ */
+export interface DMARCGenerationConfig {
+  domain: string;
+  policy: DMARCPolicy;                    // 'none', 'quarantine', 'reject'
+  subdomainPolicy?: DMARCPolicy;          // Optional subdomain policy (sp tag)
+  percentage?: number;                    // pct tag (0-100), default: 100
+  aggregateReportEmail?: string;          // rua tag (email for aggregate reports)
+  forensicReportEmail?: string;           // ruf tag (email for forensic reports)
+  spfAlignment?: DMARCAlignment;          // aspf tag (r or s), default: r
+  dkimAlignment?: DMARCAlignment;         // adkim tag (r or s), default: r
+  reportingInterval?: number;             // ri tag (seconds), default: 86400 (24h)
+  reportFormat?: string;                  // rf tag, default: afrf
+  validateProgression?: boolean;          // Validate policy progression (default: true)
+}
+
+/**
+ * Generated DMARC record result (Task 3.6)
+ */
+export interface DMARCGenerationResult {
+  success: boolean;
+  domain: string;
+  recordName: string;                     // e.g., "_dmarc.example.com"
+  recordType: 'TXT';
+  recordValue: string;                    // Complete DMARC TXT record
+  policy: DMARCPolicy;
+  subdomainPolicy?: DMARCPolicy;
+  percentage: number;
+  aggregateReportEmail?: string;
+  forensicReportEmail?: string;
+  spfAlignment: DMARCAlignment;
+  dkimAlignment: DMARCAlignment;
+  characterCount: number;                 // Total character count
+  errors: string[];
+  warnings: string[];
+  generatedAt: Date;
+}
+
+/**
+ * DMARC DNS TXT record for Cloudflare creation
+ */
+export interface DMARCDNSRecord {
+  name: string;                           // Record name (e.g., "_dmarc")
+  type: 'TXT';
+  content: string;                        // TXT record value
+  ttl: number;                            // Time to live (default: 3600)
+}
+
+/**
+ * DMARC policy progression validation
+ */
+export interface DMARCPolicyProgression {
+  currentPolicy?: DMARCPolicy;
+  newPolicy: DMARCPolicy;
+  isValid: boolean;
+  isSafe: boolean;                        // true if progression is safe
+  recommendations: string[];
+  warnings: string[];
+}
