@@ -3,6 +3,8 @@
  * Validates presence of required API keys for email infrastructure services
  */
 
+import { validateEncryptionKeyConfiguration } from '@/lib/security/credential-encryption';
+
 export interface CloudflareConfig {
   apiToken: string;
   accountId: string;
@@ -69,6 +71,9 @@ function validateSmartleadConfig(): SmartleadConfig {
  * @throws {ApiKeyValidationError} If any required configuration is missing
  */
 export function validateEmailInfrastructureConfig(): EmailInfrastructureConfig {
+  // Validate encryption key is configured (required for email credential storage)
+  validateEncryptionKeyConfiguration();
+
   return {
     cloudflare: validateCloudflareConfig(),
     smartlead: validateSmartleadConfig(),
@@ -79,7 +84,7 @@ export function validateEmailInfrastructureConfig(): EmailInfrastructureConfig {
  * Checks if a specific service configuration is available
  */
 export function isServiceConfigured(
-  service: 'cloudflare' | 'smartlead'
+  service: 'cloudflare' | 'smartlead' | 'encryption'
 ): boolean {
   try {
     switch (service) {
@@ -88,6 +93,9 @@ export function isServiceConfigured(
         return true;
       case 'smartlead':
         validateSmartleadConfig();
+        return true;
+      case 'encryption':
+        validateEncryptionKeyConfiguration();
         return true;
       default:
         return false;
