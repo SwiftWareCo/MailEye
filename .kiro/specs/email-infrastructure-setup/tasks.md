@@ -301,11 +301,12 @@ This document breaks down the implementation of the Email Infrastructure Setup T
 
 ### Phase 4: DNS Propagation Monitoring
 
-- [ ] **4.1** DNS Query Service for Multiple Servers
+- [x] **4.1** DNS Query Service for Multiple Servers
   - **Description**: Implement DNS queries across multiple nameservers (Google, Cloudflare, OpenDNS)
   - **Deliverables**:
-    - `server/dns/dns-query-service.ts` - Multi-server DNS queries
-    - Server pool configuration
+    - `server/dns/dns-query-service.ts` - Multi-server DNS queries ✓
+    - `lib/types/dns.ts` - DNS propagation types ✓
+    - Unit tests (27 tests passing) ✓
   - **Requirements**: DNS Status Monitoring Requirements (R3.12)
   - **Estimated Effort**: 1.5 hours
   - **Dependencies**: 1.3

@@ -419,3 +419,43 @@ export interface TrackingDomainDNSRecord {
   ttl: number;                          // Typically 3600
   proxied: boolean;                     // false for email-related records
 }
+
+/**
+ * DNS Propagation Monitoring Types (Task 4.1-4.5)
+ */
+
+/**
+ * DNS server provider for propagation checks
+ */
+export type DNSServerProvider = 'google' | 'cloudflare' | 'opendns';
+
+/**
+ * Single DNS server query result
+ * Represents the result of querying one specific nameserver
+ */
+export interface DNSServerQueryResult {
+  server: string;                       // IP address (e.g., '8.8.8.8')
+  provider: DNSServerProvider;          // Provider name
+  success: boolean;                     // Query succeeded
+  records: string[];                    // DNS records found
+  matchesExpected: boolean;             // Does it match expectedValue?
+  error?: string;                       // Error message if failed
+  queriedAt: Date;                      // When query was executed
+  responseTime: number;                 // Query duration in milliseconds
+}
+
+/**
+ * Multi-server DNS query result
+ * Aggregates results from querying multiple nameservers
+ */
+export interface MultiServerQueryResult {
+  domain: string;                       // Domain queried
+  recordType: 'TXT' | 'MX' | 'CNAME';   // Record type queried
+  expectedValue?: string;               // Expected record value (for verification)
+  serverResults: DNSServerQueryResult[]; // Individual server results
+  propagationPercentage: number;        // 0-100 (percentage of servers with correct value)
+  propagatedServers: number;            // Count of servers with expected value
+  totalServers: number;                 // Total servers queried
+  isPropagated: boolean;                // true if propagationPercentage === 100
+  queriedAt: Date;                      // When multi-server query was executed
+}

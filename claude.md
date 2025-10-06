@@ -307,3 +307,47 @@ FROM campaigns
 LEFT JOIN neon_auth.users_sync ON campaigns.user_id = users_sync.id
 WHERE users_sync.deleted_at IS NULL;
 ```
+
+## Code Quality & Linting
+
+### Running Linter
+**IMPORTANT**: Always run `npm run lint` before marking tasks as complete.
+
+```bash
+npm run lint
+```
+
+**This command checks:**
+- ESLint errors (code style and best practices)
+- TypeScript type errors (strict mode enabled)
+
+### Common Issues to Fix
+
+#### TypeScript `any` Types in Tests
+❌ **Don't:**
+```typescript
+let mockResolver: any;
+mockResolver.resolveTxt.mockImplementation((domain: string, callback: any) => {
+  callback(null, mockData);
+});
+```
+
+✅ **Do:**
+```typescript
+interface MockResolver {
+  setServers: ReturnType<typeof vi.fn>;
+  resolveTxt: ReturnType<typeof vi.fn>;
+}
+
+type DnsCallback<T> = (err: Error | null, result: T) => void;
+
+let mockResolver: MockResolver;
+mockResolver.resolveTxt.mockImplementation((domain: string, callback: DnsCallback<string[][]>) => {
+  callback(null, mockData);
+});
+```
+
+### Lint Enforcement
+- Project uses **strict TypeScript mode** (`"strict": true` in tsconfig.json)
+- All code must pass lint before merge
+- No explicit `any` types without proper justification
