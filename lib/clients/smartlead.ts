@@ -55,6 +55,7 @@ export async function listEmailAccounts() {
 
 /**
  * Connects an email account to Smartlead
+ * Uses the /email-accounts/save endpoint which creates or updates accounts
  */
 export async function connectEmailAccount(accountData: {
   email: string;
@@ -62,20 +63,18 @@ export async function connectEmailAccount(accountData: {
   lastName: string;
   smtpHost: string;
   smtpPort: number;
-  smtpUsername: string;
   smtpPassword: string;
   imapHost: string;
   imapPort: number;
-  imapUsername: string;
-  imapPassword: string;
   warmupEnabled?: boolean;
-  warmupReputation?: 'average' | 'good' | 'excellent';
-  dailyLimit?: number;
+  maxEmailPerDay?: number;
+  totalWarmupPerDay?: number;
+  dailyRampup?: number;
 }) {
   const config = getServiceConfig('smartlead');
 
   const response = await fetch(
-    `${SMARTLEAD_BASE_URL}/email-accounts/connect?api_key=${config.apiKey}`,
+    `${SMARTLEAD_BASE_URL}/email-accounts/save?api_key=${config.apiKey}`,
     {
       method: 'POST',
       headers: {
@@ -84,51 +83,75 @@ export async function connectEmailAccount(accountData: {
       body: JSON.stringify({
         from_email: accountData.email,
         from_name: `${accountData.firstName} ${accountData.lastName}`,
+        user_name: accountData.email, // Smartlead uses email as username
+        password: accountData.smtpPassword,
         smtp_host: accountData.smtpHost,
         smtp_port: accountData.smtpPort,
-        smtp_username: accountData.smtpUsername,
-        smtp_password: accountData.smtpPassword,
         imap_host: accountData.imapHost,
         imap_port: accountData.imapPort,
-        imap_username: accountData.imapUsername,
-        imap_password: accountData.imapPassword,
         warmup_enabled: accountData.warmupEnabled ?? true,
-        warmup_reputation: accountData.warmupReputation ?? 'average',
-        daily_limit: accountData.dailyLimit ?? 50,
+        max_email_per_day: accountData.maxEmailPerDay ?? 50,
+        total_warmup_per_day: accountData.totalWarmupPerDay,
+        daily_rampup: accountData.dailyRampup,
       }),
     }
   );
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`Smartlead connection failed: ${error.message || response.statusText}`);
+    const errorText = await response.text();
+    let errorMessage = response.statusText;
+
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.message || errorJson.error || errorText;
+    } catch {
+      errorMessage = errorText || errorMessage;
+    }
+
+    throw new Error(`Smartlead API error: ${errorMessage}`);
   }
 
   return await response.json();
 }
 
 /**
- * Disconnects an email account from Smartlead
+ * Updates an email account settings in Smartlead
+ * Used for modifying send limits, warmup settings, tags, etc.
+ * Note: Smartlead doesn't have a true "delete" endpoint - use this to set accounts inactive
  */
-export async function disconnectEmailAccount(emailAccountId: string) {
+export async function updateEmailAccount(
+  emailAccountId: string,
+  settings: {
+    maxEmailPerDay?: number;
+    warmupEnabled?: boolean;
+    tags?: string[];
+    fromName?: string;
+  }
+) {
   const config = getServiceConfig('smartlead');
 
   const response = await fetch(
     `${SMARTLEAD_BASE_URL}/email-accounts/${emailAccountId}?api_key=${config.apiKey}`,
     {
-      method: 'DELETE',
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        max_email_per_day: settings.maxEmailPerDay,
+        warmup_enabled: settings.warmupEnabled,
+        tags: settings.tags,
+        from_name: settings.fromName,
+      }),
     }
   );
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(`Smartlead disconnect failed: ${error.message || response.statusText}`);
+    throw new Error(`Smartlead account update failed: ${error.message || response.statusText}`);
   }
 
-  return { success: true };
+  return await response.json();
 }
 
 /**
@@ -156,13 +179,15 @@ export async function getEmailAccountStatus(emailAccountId: string) {
 
 /**
  * Updates warmup settings for an email account
+ * Uses POST method as per Smartlead API documentation
  */
 export async function updateWarmupSettings(
   emailAccountId: string,
   settings: {
     warmupEnabled?: boolean;
     warmupReputation?: 'average' | 'good' | 'excellent';
-    dailyLimit?: number;
+    totalWarmupPerDay?: number;
+    dailyRampup?: number;
   }
 ) {
   const config = getServiceConfig('smartlead');
@@ -170,14 +195,15 @@ export async function updateWarmupSettings(
   const response = await fetch(
     `${SMARTLEAD_BASE_URL}/email-accounts/${emailAccountId}/warmup?api_key=${config.apiKey}`,
     {
-      method: 'PATCH',
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         warmup_enabled: settings.warmupEnabled,
         warmup_reputation: settings.warmupReputation,
-        daily_limit: settings.dailyLimit,
+        total_warmup_per_day: settings.totalWarmupPerDay,
+        daily_rampup: settings.dailyRampup,
       }),
     }
   );
@@ -191,40 +217,38 @@ export async function updateWarmupSettings(
 }
 
 /**
- * Sets up a custom tracking domain in Smartlead
+ * Gets warmup statistics for an email account (last 7 days)
+ * Returns daily metrics: sent, delivered, bounced, replied, deliverability rate
  */
-export async function setupTrackingDomain(domain: string) {
+export async function getWarmupStats(emailAccountId: string) {
   const config = getServiceConfig('smartlead');
 
   const response = await fetch(
-    `${SMARTLEAD_BASE_URL}/tracking-domains?api_key=${config.apiKey}`,
+    `${SMARTLEAD_BASE_URL}/email-accounts/${emailAccountId}/warmup-stats?api_key=${config.apiKey}`,
     {
-      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ domain }),
     }
   );
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(`Smartlead tracking domain setup failed: ${error.message || response.statusText}`);
+    throw new Error(`Smartlead warmup stats fetch failed: ${error.message || response.statusText}`);
   }
 
   return await response.json();
 }
 
 /**
- * Verifies a custom tracking domain
+ * Lists all email accounts assigned to a campaign
  */
-export async function verifyTrackingDomain(trackingDomainId: string) {
+export async function listCampaignEmailAccounts(campaignId: number) {
   const config = getServiceConfig('smartlead');
 
   const response = await fetch(
-    `${SMARTLEAD_BASE_URL}/tracking-domains/${trackingDomainId}/verify?api_key=${config.apiKey}`,
+    `${SMARTLEAD_BASE_URL}/campaigns/${campaignId}/email-accounts?api_key=${config.apiKey}`,
     {
-      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
@@ -233,8 +257,70 @@ export async function verifyTrackingDomain(trackingDomainId: string) {
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(`Smartlead tracking verification failed: ${error.message || response.statusText}`);
+    throw new Error(`Smartlead campaign email accounts fetch failed: ${error.message || response.statusText}`);
   }
 
   return await response.json();
 }
+
+/**
+ * Adds an email account to a campaign
+ */
+export async function addEmailAccountToCampaign(
+  campaignId: number,
+  emailAccountId: string,
+  settings?: {
+    dailyLimit?: number;
+  }
+) {
+  const config = getServiceConfig('smartlead');
+
+  const response = await fetch(
+    `${SMARTLEAD_BASE_URL}/campaigns/${campaignId}/email-accounts?api_key=${config.apiKey}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email_account_id: emailAccountId,
+        daily_limit: settings?.dailyLimit,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Smartlead add account to campaign failed: ${error.message || response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Removes an email account from a campaign
+ */
+export async function removeEmailAccountFromCampaign(
+  campaignId: number,
+  emailAccountId: string
+) {
+  const config = getServiceConfig('smartlead');
+
+  const response = await fetch(
+    `${SMARTLEAD_BASE_URL}/campaigns/${campaignId}/email-accounts/${emailAccountId}?api_key=${config.apiKey}`,
+    {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(`Smartlead remove account from campaign failed: ${error.message || response.statusText}`);
+  }
+
+  return { success: true };
+}
+

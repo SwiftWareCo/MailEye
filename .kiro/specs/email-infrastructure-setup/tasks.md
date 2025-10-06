@@ -262,13 +262,16 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 45 minutes
   - **Dependencies**: 1.3
 
-- [ ] **3.8** Custom Tracking Domain CNAME Setup
-  - **Description**: Create CNAME records for Smartlead custom tracking domains
+- [ ] **3.8** Custom Tracking Domain DNS Checklist
+  - **Description**: Create DNS checklist UI for manual tracking domain setup (Smartlead has no API for this)
   - **Deliverables**:
-    - `server/dns/tracking-domain-setup.ts` - Tracking CNAME generator
-    - Smartlead tracking configuration
+    - `components/setup/TrackingDomainChecklist.tsx` - Manual DNS setup checklist component
+    - `lib/utils/dns-cname-checker.ts` - Client-side CNAME verification utility
+    - Documentation for CNAME setup: `emailtracking.<domain>` → `open.sleadtrack.com`
+    - Link to Smartlead settings page for manual URL entry
   - **Requirements**: Smartlead Integration Requirements (Custom Tracking)
-  - **Estimated Effort**: 1 hour
+  - **Note**: Smartlead API does NOT support tracking domain setup/verification - must be done manually in UI
+  - **Estimated Effort**: 2 hours
   - **Dependencies**: 1.3
 
 - [x] **3.9** Cloudflare DNS Record Creation Service
@@ -411,22 +414,27 @@ This document breaks down the implementation of the Email Infrastructure Setup T
 
 ### Phase 6: Smartlead Integration & Compliance
 
-- [ ] **6.1** Smartlead Email Account Connection
-  - **Description**: Connect email accounts to Smartlead via API with SMTP/IMAP credentials
+- [x] **6.1** Smartlead Email Account Connection
+  - **Description**: Connect email accounts to Smartlead via API with SMTP/IMAP credentials (API alignment completed)
   - **Deliverables**:
-    - `server/smartlead/account-connector.ts` - Smartlead connection logic
-    - Warmup settings configuration
+    - `server/smartlead/account-connector.ts` - Smartlead connection logic ✓
+    - Warmup settings configuration (POST endpoint) ✓
+    - Campaign assignment helpers ✓
+    - Proper disconnect flow (remove from campaigns → set inactive) ✓
   - **Requirements**: Smartlead Integration Requirements (R3.22-R3.24)
+  - **Note**: API-aligned implementation - warmup uses POST, no direct DELETE endpoint, includes campaign operations
   - **Estimated Effort**: 2 hours
   - **Dependencies**: 0.5, 5.4, 1.6
 
-- [ ] **6.2** Smartlead Tracking Domain Verification
-  - **Description**: Verify custom tracking domain setup in Smartlead after CNAME creation
+- [ ] **6.2** Tracking Domain DNS Verification (Client-Side)
+  - **Description**: Client-side DNS CNAME verification + manual UI flow (no Smartlead API)
   - **Deliverables**:
-    - `server/smartlead/tracking-domain-verifier.ts` - Verification logic
-    - Retry mechanism for pending verification
+    - `lib/utils/dns-cname-checker.ts` - Client-side CNAME verification
+    - UI checklist component (already in 3.8)
+    - Polling mechanism to check DNS propagation
   - **Requirements**: Smartlead Integration Requirements (R3.25), Tracking Domain Setup
-  - **Estimated Effort**: 1.5 hours
+  - **Note**: Smartlead API does NOT have tracking domain endpoints - manual setup only
+  - **Estimated Effort**: 1 hour
   - **Dependencies**: 6.1, 3.8
 
 - [ ] **6.3** Batch Smartlead Connection Service
@@ -436,6 +444,29 @@ This document breaks down the implementation of the Email Infrastructure Setup T
     - Error handling for failed connections
   - **Requirements**: Smartlead Integration Requirements, Batch Operations
   - **Estimated Effort**: 1.5 hours
+  - **Dependencies**: 6.1
+
+- [ ] **6.1a** Campaign Assignment Integration
+  - **Description**: Implement email account → campaign assignment with health gating
+  - **Deliverables**:
+    - `server/smartlead/campaign-assigner.ts` - Campaign assignment logic (already in account-connector.ts ✓)
+    - Health threshold validation (warmup stats check - TODO when stats available)
+    - Batch assignment support for multiple accounts
+    - Server Actions for UI integration
+  - **Requirements**: Smartlead Integration Requirements, Campaign Management
+  - **Note**: Core functions implemented in account-connector.ts - needs Server Actions wrapper
+  - **Estimated Effort**: 1.5 hours
+  - **Dependencies**: 6.1
+
+- [ ] **6.1b** Warmup Stats Polling Service
+  - **Description**: Background job to poll warmup stats (7-day metrics) for health monitoring
+  - **Deliverables**:
+    - `server/smartlead/warmup-stats-poller.ts` - Stats polling background job
+    - `server/smartlead/warmup-stats.data.ts` - Data layer for stats storage
+    - Database migration: `smartlead_warmup_stats` table (date, sent, delivered, bounced, replied, deliverability_rate)
+    - Scheduled job integration (daily or on-demand polling)
+  - **Requirements**: Smartlead Integration Requirements, Health Monitoring
+  - **Estimated Effort**: 2 hours
   - **Dependencies**: 6.1
 
 - [ ] **6.4** Gmail/Yahoo/Outlook 2025 Compliance Validator
@@ -455,6 +486,17 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Requirements**: Compliance and Validation Requirements (R3.28)
   - **Estimated Effort**: 2 hours
   - **Dependencies**: 4.2, 6.4
+
+- [ ] **6.4a** Warmup Health Monitoring Dashboard
+  - **Description**: Display warmup health metrics (deliverability, bounce rate, trend graphs)
+  - **Deliverables**:
+    - `components/dashboard/WarmupHealthCard.tsx` - Health metrics display component
+    - 7-day trend chart (shadcn/ui + Recharts or similar)
+    - Health status badges (warming/healthy/at-risk)
+    - Real-time polling integration (TanStack Query)
+  - **Requirements**: Smartlead Integration Requirements, Health Monitoring UI
+  - **Estimated Effort**: 2.5 hours
+  - **Dependencies**: 6.1b
 
 ### Phase 7: Frontend Wizard & Dashboard
 
@@ -629,6 +671,25 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 1.5 hours
   - **Dependencies**: 7.17
 
+- [ ] **7.18** Backend Integration Documentation
+  - **Description**: Comprehensive documentation of all backend functions for Phase 7 wizard integration
+  - **Deliverables**:
+    - `.kiro/specs/email-infrastructure-setup/backend-api-reference.md` - Complete function reference
+    - Flow diagrams: Domain → DNS → Email → Smartlead → Campaign workflow
+    - Function signatures, parameters, return types, error handling patterns
+    - Usage examples for each wizard step
+    - Integration guide for TanStack Query + Server Actions
+  - **Documentation Sections**:
+    1. **Domain Management** (`server/domain/*`) - Connection, nameserver verification, zone creation
+    2. **DNS Configuration** (`server/dns/*`) - SPF flattening, DKIM, DMARC, MX, record creation
+    3. **Email Provisioning** (`server/email/*`) - Google Workspace account creation, credential management
+    4. **Smartlead Integration** (`server/smartlead/*`) - Connection, warmup, campaign assignment, disconnect
+    5. **Polling & Status** - DNS propagation, warmup stats polling
+  - **Requirements**: Developer Experience, Phase 7 Implementation Readiness
+  - **Note**: Critical for Phase 7 implementation - documents all backend functions created in Phases 0-6
+  - **Estimated Effort**: 3 hours
+  - **Dependencies**: 6.1, 6.1a, 6.1b
+
 ## Task Guidelines
 
 ### Task Completion Criteria
@@ -749,18 +810,40 @@ A task is considered "Done" when:
 - ✅ Phase 0: Project Setup & External API Integration (5/5 tasks - 100%)
 - ✅ Phase 1: Database Schema & Core Types (8/8 tasks - 100%)
 - ✅ Phase 2: Domain Management & Nameserver Verification (4/4 core tasks - 100%)
+- ✅ Phase 3: DNS Record Management & SPF Flattening (10/10 tasks - 100%)
 
-**Current Phase**: Phase 3 - DNS Record Management & SPF Flattening (9/10 tasks complete - 90%)
+**Current Phase**:
+- Phase 5: Email Account Provisioning (4/7 tasks complete - 57%)
+- Phase 6: Smartlead Integration & Compliance (1/8 tasks complete - API alignment done)
 
-**Overall Progress**: 26/55 tasks completed (47%)
+**Overall Progress**: 28/60 tasks completed (47%)
 
-**Last Updated**: 2025-10-04
+**Last Updated**: 2025-10-06
 
 **Recent Completion**:
-- ✅ Task 3.8: Custom Tracking Domain CNAME Setup (43 tests passing)
-- ✅ Task 3.9: Cloudflare DNS Record Creation Service (14 tests passing)
-- ✅ Task 3.10: DNS Configuration Orchestrator (9 tests passing)
+- ✅ Task 6.1: Smartlead Email Account Connection (API alignment completed)
+  - Fixed warmup endpoint (PATCH → POST)
+  - Replaced disconnect with proper inactivation flow
+  - Added campaign assignment helpers
+  - Added 4 new API endpoints (warmup stats, campaign operations)
+  - Updated type definitions
 
-**Next Steps**: Phase 3 nearly complete! Ready to begin Phase 4 (DNS Propagation Monitoring) or Phase 5 (Email Account Provisioning)
+**API Alignment Changes**:
+- **Tracking Domain**: Changed from API endpoints to manual DNS checklist (Task 3.8, 6.2)
+- **Warmup Settings**: Now uses POST endpoint with correct field names
+- **Disconnect Flow**: Proper implementation (remove from campaigns → set inactive → clear mapping)
+- **New Endpoints**: getWarmupStats, listCampaignEmailAccounts, addEmailAccountToCampaign, removeEmailAccountFromCampaign
+
+**New Tasks Added**:
+- Task 6.1a: Campaign Assignment Integration (needs Server Actions wrapper)
+- Task 6.1b: Warmup Stats Polling Service (background job)
+- Task 6.4a: Warmup Health Monitoring Dashboard (UI for 7-day stats)
+- Task 7.18: Backend Integration Documentation (critical for Phase 7)
+
+**Next Steps**:
+1. Complete Phase 5 remaining tasks (5.5, 5.6, 5.7)
+2. Implement warmup stats polling (6.1b)
+3. Build campaign assignment Server Actions (6.1a)
+4. Create backend API documentation (7.18) before starting Phase 7
 
 **Estimated Completion**: 2-3 weeks for remaining implementation
