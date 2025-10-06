@@ -132,3 +132,78 @@ export interface EmailProvisioningMetadata {
   status: EmailAccountStatus;
   lastVerifiedAt?: Date;
 }
+
+/**
+ * Batch email provisioning types
+ */
+
+/**
+ * Individual account item for batch provisioning
+ */
+export interface BatchEmailAccountItem {
+  username: string;
+  firstName: string;
+  lastName: string;
+  password?: string; // Optional: will be auto-generated if not provided
+  displayName?: string;
+}
+
+/**
+ * Parameters for batch email account creation
+ */
+export interface BatchEmailProvisioningParams {
+  userId: string;
+  domainId: string;
+  domain: string;
+  accounts: BatchEmailAccountItem[];
+  maxConcurrency?: number; // Default: 5
+  retryFailedItems?: boolean; // Default: true
+}
+
+/**
+ * Result for individual account in batch
+ */
+export interface BatchEmailAccountResult {
+  itemIndex: number;
+  username: string;
+  email: string;
+  success: boolean;
+  accountId?: string; // Database account ID
+  providerUserId?: string; // Google Workspace user ID
+  credentials?: EmailCredentials;
+  error?: EmailProvisioningError;
+  retryCount?: number;
+}
+
+/**
+ * Progress update for batch operation
+ */
+export interface BatchProgressUpdate {
+  batchOperationId: string;
+  totalItems: number;
+  processedItems: number;
+  successfulItems: number;
+  failedItems: number;
+  pendingItems: number;
+  progressPercentage: number;
+  estimatedCompletionAt?: Date;
+  currentStatus: 'pending' | 'in_progress' | 'completed' | 'failed' | 'partial';
+}
+
+/**
+ * Overall result of batch provisioning operation
+ */
+export interface BatchEmailProvisioningResult {
+  success: boolean;
+  batchOperationId: string;
+  totalAccounts: number;
+  successfulAccounts: number;
+  failedAccounts: number;
+  results: BatchEmailAccountResult[];
+  errors: Array<{
+    itemIndex: number;
+    username: string;
+    error: EmailProvisioningError;
+  }>;
+  progress: BatchProgressUpdate;
+}
