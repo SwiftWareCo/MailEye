@@ -19,7 +19,7 @@ export default async function OnboardingPage() {
             Welcome to MailEye!
           </h1>
           <p className="text-xl text-gray-300 mb-8">
-            Let's get your account set up to start managing your cold email campaigns.
+            Let&apos;s get your account set up to start managing your cold email campaigns.
           </p>
         </div>
 

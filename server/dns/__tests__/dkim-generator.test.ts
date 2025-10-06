@@ -19,7 +19,6 @@ import {
 describe('DKIM Generator', () => {
   // Sample public keys for testing
   const shortPublicKey = 'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC'; // ~40 chars
-  const mediumPublicKey = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'; // ~200 chars
   const longPublicKey = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA' + 'x'.repeat(300); // ~350 chars (exceeds 255 limit)
 
   describe('generateGoogleWorkspaceDKIM', () => {

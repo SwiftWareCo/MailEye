@@ -210,7 +210,7 @@ export async function validateDomain(
     }
 
     return formatValidation;
-  } catch (error) {
+  } catch {
     return {
       isValid: false,
       sanitizedDomain: formatValidation.sanitizedDomain,

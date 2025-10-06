@@ -61,24 +61,18 @@ export async function createDNSRecord(
 ) {
   const client = getCloudflareClient(apiToken);
 
-  // Build the record object with proper typing
-  const recordData: any = {
+  // Build the record object - TypeScript infers the correct type from parameters
+  const recordData = {
     zone_id: zoneId,
     type: record.type,
     name: record.name,
     content: record.content,
     ttl: record.ttl || 1,
+    ...(record.priority !== undefined && { priority: record.priority }),
+    ...(record.proxied !== undefined && { proxied: record.proxied }),
   };
 
-  if (record.priority !== undefined) {
-    recordData.priority = record.priority;
-  }
-
-  if (record.proxied !== undefined) {
-    recordData.proxied = record.proxied;
-  }
-
-  return await client.dns.records.create(recordData);
+  return await client.dns.records.create(recordData as Parameters<typeof client.dns.records.create>[0]);
 }
 
 /**
@@ -110,8 +104,8 @@ export async function createZone(apiToken: string, accountId: string, domainName
     });
 
     return zone;
-  } catch (error: any) {
-    const errorMessage = error.message || JSON.stringify(error);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
 
     // Handle permission errors (403)
     if (errorMessage.includes('403') || errorMessage.includes('permission') || errorMessage.includes('com.cloudflare.api.account.zone.create')) {
@@ -172,8 +166,8 @@ export async function deleteZone(apiToken: string, zoneId: string) {
 
   try {
     return await client.zones.delete({ zone_id: zoneId });
-  } catch (error: any) {
-    const errorMessage = error.message || JSON.stringify(error);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
     throw new Error(`Failed to delete zone: ${errorMessage}`);
   }
 }
@@ -190,8 +184,8 @@ export async function getZoneStatus(apiToken: string, zoneId: string): Promise<s
   try {
     const zone = await client.zones.get({ zone_id: zoneId });
     return zone.status || 'unknown';
-  } catch (error: any) {
-    const errorMessage = error.message || JSON.stringify(error);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
     throw new Error(`Failed to get zone status: ${errorMessage}`);
   }
 }

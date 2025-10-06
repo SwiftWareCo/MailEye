@@ -126,7 +126,7 @@ function extractResolvedIncludeFromChain(chain: SPFIncludeChain): ResolvedInclud
   // Collect all IPs from this chain and nested chains
   const allIPv4: string[] = [...chain.ipv4];
   const allIPv6: string[] = [...chain.ipv6];
-  let nestedLookups = chain.lookupCount;
+  const nestedLookups = chain.lookupCount;
 
   // Recursively collect IPs from nested includes
   function collectFromNested(nestedChain: SPFIncludeChain) {

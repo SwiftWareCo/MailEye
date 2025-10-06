@@ -7,8 +7,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   flattenSPFRecord,
-  storeFlattenedSPF,
-  getFlattenedSPF,
   analyzeFlatteningBenefit,
 } from '../spf-flattener';
 import * as spfIPResolver from '../spf-ip-resolver';

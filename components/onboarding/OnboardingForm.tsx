@@ -9,7 +9,7 @@ interface OnboardingFormProps {
   user: UserWithMetadata;
 }
 
-export default function OnboardingForm({ user }: OnboardingFormProps) {
+export default function OnboardingForm(_props: OnboardingFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -202,7 +202,7 @@ export default function OnboardingForm({ user }: OnboardingFormProps) {
           onChange={handleInputChange}
           className="w-full bg-gray-700/50 border border-gray-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
-          <option value="">What's your main goal with MailEye?</option>
+          <option value="">What&apos;s your main goal with MailEye?</option>
           <option value="lead-generation">Lead Generation</option>
           <option value="sales-outreach">Sales Outreach</option>
           <option value="partnership-building">Partnership Building</option>

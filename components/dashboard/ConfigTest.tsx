@@ -14,9 +14,29 @@ import { Badge } from '@/components/ui/badge';
 import { testBasicConfiguration } from '@/server/crawlee/config.test.actions';
 import { Loader2, Monitor, Smartphone, CheckCircle2, AlertCircle } from 'lucide-react';
 
+interface TestResult {
+  success: boolean;
+  error?: string;
+  desktop?: {
+    success: boolean;
+    viewport: { width: number; height: number };
+    userAgent: string;
+    vercelSettings: { timeout: number; maxConcurrency: number };
+  };
+  mobile?: {
+    success: boolean;
+    viewport: { width: number; height: number };
+    userAgent: string;
+  };
+  userAgentRotation?: {
+    desktop: string[];
+    mobile: string[];
+  };
+}
+
 export function ConfigTest() {
   const [isLoading, setIsLoading] = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
+  const [testResult, setTestResult] = useState<TestResult | null>(null);
 
   const handleTest = async () => {
     setIsLoading(true);
