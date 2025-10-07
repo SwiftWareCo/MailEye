@@ -31,6 +31,7 @@ import { Wand2 } from 'lucide-react';
 import { useSetupWizard } from '@/lib/hooks/use-setup-wizard';
 import { WizardProgress } from './WizardProgress';
 import { WizardNavigation } from './WizardNavigation';
+import { DomainConnectionStep } from './DomainConnectionStep';
 import type { DomainConnectionInput, DomainConnectionResult } from '@/lib/types/domain';
 import type { NameserverVerificationResult } from '@/server/domain/nameserver-verifier';
 import type { DNSSetupResult } from '@/server/dns/dns-manager';
@@ -38,12 +39,14 @@ import type { EmailAccountResult } from '@/lib/types/email';
 import type { SmartleadConnectionResult } from '@/lib/types/smartlead';
 
 interface SetupWizardProps {
+  // User context
+  userId: string;
+
   // Trigger button props
   triggerLabel?: string;
   triggerVariant?: 'default' | 'outline' | 'secondary';
 
   // Server Actions (passed from parent page - all required for wizard flow)
-  // These will be properly typed when step components are implemented in tasks 7.2-7.11
   connectDomainAction: (input: DomainConnectionInput) => Promise<DomainConnectionResult>;
   verifyNameserversAction: (domainId: string) => Promise<NameserverVerificationResult>;
   setupDNSAction: (domainId: string) => Promise<DNSSetupResult>;
@@ -57,10 +60,10 @@ interface SetupWizardProps {
 }
 
 export function SetupWizard({
+  userId,
   triggerLabel = 'Start Setup Wizard',
   triggerVariant = 'default',
-  // Server actions will be used in tasks 7.2-7.11 when step components are implemented
-  // connectDomainAction,
+  connectDomainAction,
   // verifyNameserversAction,
   // setupDNSAction,
   // createEmailAccountAction,
@@ -116,32 +119,25 @@ export function SetupWizard({
     switch (currentStep) {
       case 1:
         return (
-          <div className="space-y-4 py-6">
-            <h3 className="text-lg font-semibold">Step 1: Domain Connection</h3>
-            <p className="text-sm text-muted-foreground">
-              Connect your domain to get started. You&apos;ll receive instructions to update your
-              nameservers to Cloudflare.
-            </p>
-            <div className="bg-muted/50 p-4 rounded-md">
-              <p className="text-sm">Domain connection form will go here...</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                This is a placeholder. Component to be implemented in Task 7.2
-              </p>
-            </div>
-            <Button
-              onClick={() => {
-                // Simulate domain connection
-                updateWizardData({
-                  domainId: 'demo-domain-id',
-                  domain: 'example.com',
-                  provider: 'godaddy',
-                });
+          <DomainConnectionStep
+            userId={userId}
+            connectDomainAction={connectDomainAction}
+            onSuccess={(domainId, domain, nameserverInstructions) => {
+              // Update wizard state with domain information
+              updateWizardData({
+                domainId,
+                domain,
+                provider: nameserverInstructions.provider,
+              });
+              // Automatically advance to next step after successful connection
+              setTimeout(() => {
                 goToNextStep();
-              }}
-            >
-              Simulate Domain Connection
-            </Button>
-          </div>
+              }, 1000);
+            }}
+            onError={(error) => {
+              console.error('Domain connection error:', error);
+            }}
+          />
         );
 
       case 2:
@@ -314,7 +310,7 @@ export function SetupWizard({
           </Button>
         </DialogTrigger>
 
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Email Infrastructure Setup Wizard</DialogTitle>
             <DialogDescription>

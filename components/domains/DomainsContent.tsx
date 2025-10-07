@@ -78,6 +78,7 @@ export function DomainsContent({
           </p>
         </div>
         <SetupWizard
+          userId={userId}
           triggerLabel={totalDomains > 0 ? 'Setup New Domain' : 'Start Setup Wizard'}
           triggerVariant="default"
           connectDomainAction={connectDomainAction}
