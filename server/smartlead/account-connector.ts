@@ -11,7 +11,6 @@
 
 import { db } from '@/lib/db';
 import { smartleadAccountMappings } from '@/lib/db/schema/smartlead';
-import { emailAccounts } from '@/lib/db/schema/email-accounts';
 import {
   getEmailAccount,
   getDecryptedCredentials,
@@ -35,7 +34,7 @@ import type {
   SmartleadAccountData,
   SmartleadApiResponse,
 } from '@/lib/types/smartlead';
-import { eq, and } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 /**
  * Default warmup configuration for new connections
@@ -178,29 +177,6 @@ async function createSmartleadMapping(
   } catch (error) {
     console.error('Failed to create Smartlead mapping:', error);
     return null;
-  }
-}
-
-/**
- * Updates the status of a Smartlead mapping
- */
-async function updateMappingStatus(
-  emailAccountId: string,
-  status: 'synced' | 'pending' | 'failed' | 'conflict',
-  errorMessage?: string
-): Promise<void> {
-  try {
-    await db
-      .update(smartleadAccountMappings)
-      .set({
-        syncStatus: status,
-        lastSyncedAt: new Date(),
-        syncErrors: errorMessage ? [errorMessage] : null,
-        updatedAt: new Date(),
-      })
-      .where(eq(smartleadAccountMappings.emailAccountId, emailAccountId));
-  } catch (error) {
-    console.error('Failed to update mapping status:', error);
   }
 }
 

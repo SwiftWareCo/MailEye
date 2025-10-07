@@ -8,25 +8,41 @@
 'use client';
 
 import { DomainList } from './DomainList';
-import { DomainConnectionModal } from './DomainConnectionModal';
+import { SetupWizard } from '@/components/setup/SetupWizard';
 import { useDomains } from '@/lib/hooks/use-domains';
 import type { Domain, DomainConnectionInput, DomainConnectionResult } from '@/lib/types/domain';
 import type { NameserverVerificationResult } from '@/server/domain/nameserver-verifier';
+import type { DNSSetupResult } from '@/server/dns/dns-manager';
+import type { EmailAccountResult } from '@/lib/types/email';
+import type { SmartleadConnectionResult } from '@/lib/types/smartlead';
 
 interface DomainsContentProps {
   userId: string;
   initialDomains: Domain[];
-  connectDomainAction: (input: DomainConnectionInput) => Promise<DomainConnectionResult>;
   deleteDomainAction: (domainId: string) => Promise<{ success: boolean; error?: string }>;
   verifyNameserversAction: (domainId: string) => Promise<NameserverVerificationResult>;
+
+  // Wizard Server Actions (all required for end-to-end setup)
+  connectDomainAction: (input: DomainConnectionInput) => Promise<DomainConnectionResult>;
+  setupDNSAction: (domainId: string) => Promise<DNSSetupResult>;
+  createEmailAccountAction: (params: {
+    domainId: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+  }) => Promise<EmailAccountResult>;
+  connectToSmartleadAction: (emailAccountId: string) => Promise<SmartleadConnectionResult>;
 }
 
 export function DomainsContent({
   userId,
   initialDomains,
-  connectDomainAction,
   deleteDomainAction,
   verifyNameserversAction,
+  connectDomainAction,
+  setupDNSAction,
+  createEmailAccountAction,
+  connectToSmartleadAction,
 }: DomainsContentProps) {
   // Use TanStack Query for reactive state management
   const { data: domains } = useDomains(initialDomains, userId);
@@ -57,11 +73,19 @@ export function DomainsContent({
                 <span className="text-yellow-500">{pendingDomains} pending</span>
               </>
             ) : (
-              'Manage your domains and email infrastructure'
+              'Set up your email infrastructure in 7 guided steps'
             )}
           </p>
         </div>
-        <DomainConnectionModal userId={userId} connectDomainAction={connectDomainAction} />
+        <SetupWizard
+          triggerLabel={totalDomains > 0 ? 'Setup New Domain' : 'Start Setup Wizard'}
+          triggerVariant="default"
+          connectDomainAction={connectDomainAction}
+          verifyNameserversAction={verifyNameserversAction}
+          setupDNSAction={setupDNSAction}
+          createEmailAccountAction={createEmailAccountAction}
+          connectToSmartleadAction={connectToSmartleadAction}
+        />
       </div>
 
       {/* Domain list */}

@@ -20,6 +20,9 @@ import {
   getUserCloudflareCredentials,
   syncCloudflareZonesToDatabase,
 } from '@/server/cloudflare/cloudflare.actions';
+import { setupDNSAction } from '@/server/dns/dns.actions';
+import { createEmailAccountAction } from '@/server/email/email.actions';
+import { connectToSmartleadAction } from '@/server/smartlead/smartlead.actions';
 
 export default async function DomainsPage() {
   const { needsOnboarding, user } = await requireOnboarding();
@@ -55,6 +58,8 @@ export default async function DomainsPage() {
   const boundDeleteDomain = deleteDomainAction.bind(null, user.id);
   const boundVerifyNameservers = verifyNameserversAction.bind(null, user.id);
 
+  // Note: DNS, Email, and Smartlead actions handle auth internally (don't need userId binding)
+
   return (
     <DomainsContent
       userId={user.id}
@@ -62,6 +67,9 @@ export default async function DomainsPage() {
       connectDomainAction={boundConnectDomain}
       deleteDomainAction={boundDeleteDomain}
       verifyNameserversAction={boundVerifyNameservers}
+      setupDNSAction={setupDNSAction}
+      createEmailAccountAction={createEmailAccountAction}
+      connectToSmartleadAction={connectToSmartleadAction}
     />
   );
 }

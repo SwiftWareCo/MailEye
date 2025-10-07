@@ -80,8 +80,9 @@ export function DomainList({
             No domains yet
           </h3>
           <p className="text-muted-foreground text-center max-w-md mb-6">
-            Connect your first domain to start setting up email infrastructure,
-            authentication, and cold email campaigns.
+            Click &quot;Start Setup Wizard&quot; above to set up your first domain with
+            guided steps for DNS configuration, email account creation, and Smartlead
+            integration.
           </p>
         </CardContent>
       </Card>

@@ -333,7 +333,7 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 2 hours
   - **Dependencies**: 4.2, 1.7
 
-- [ ] **4.4** DNS Polling Progress Tracking
+- [x] **4.4** DNS Polling Progress Tracking
   - **Description**: Track polling progress and calculate estimated completion time
   - **Deliverables**:
     - `server/dns/polling-progress.ts` - Progress calculation
@@ -342,7 +342,7 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 1 hour
   - **Dependencies**: 4.3
 
-- [ ] **4.5** Real-Time DNS Status Server Action
+- [x] **4.5** Real-Time DNS Status Server Action
   - **Description**: Create Server Action for fetching current DNS propagation status (polled by TanStack Query)
   - **Deliverables**:
     - `server/dns/dns-status.actions.ts` - Server Action for status
@@ -676,24 +676,25 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 1.5 hours
   - **Dependencies**: 7.17
 
-- [ ] **7.18** Backend Integration Documentation
+- [x] **7.18** Backend Integration Documentation
   - **Description**: Comprehensive documentation of all backend functions for Phase 7 wizard integration
   - **Deliverables**:
-    - `.kiro/specs/email-infrastructure-setup/backend-api-reference.md` - Complete function reference
-    - Flow diagrams: Domain → DNS → Email → Smartlead → Campaign workflow
-    - Function signatures, parameters, return types, error handling patterns
-    - Usage examples for each wizard step
-    - Integration guide for TanStack Query + Server Actions
+    - `.kiro/specs/email-infrastructure-setup/backend-api-reference.md` - Complete function reference ✓
+    - Flow diagrams: Domain → DNS → Email → Smartlead → Campaign workflow ✓
+    - Function signatures, parameters, return types, error handling patterns ✓
+    - Usage examples for each wizard step ✓
+    - Integration guide for TanStack Query + Server Actions ✓
   - **Documentation Sections**:
-    1. **Domain Management** (`server/domain/*`) - Connection, nameserver verification, zone creation
-    2. **DNS Configuration** (`server/dns/*`) - SPF flattening, DKIM, DMARC, MX, record creation
-    3. **Email Provisioning** (`server/email/*`) - Google Workspace account creation, credential management
-    4. **Smartlead Integration** (`server/smartlead/*`) - Connection, warmup, campaign assignment, disconnect
-    5. **Polling & Status** - DNS propagation, warmup stats polling
+    1. **Domain Management** (`server/domain/*`) - Connection, nameserver verification, zone creation ✓
+    2. **DNS Configuration** (`server/dns/*`) - SPF flattening, DKIM, DMARC, MX, record creation ✓
+    3. **Email Provisioning** (`server/email/*`) - Google Workspace account creation, credential management ✓
+    4. **Smartlead Integration** (`server/smartlead/*`) - Connection, warmup, campaign assignment, disconnect ✓
+    5. **Polling & Status** - DNS propagation, warmup stats polling ✓
   - **Requirements**: Developer Experience, Phase 7 Implementation Readiness
   - **Note**: Critical for Phase 7 implementation - documents all backend functions created in Phases 0-6
   - **Estimated Effort**: 3 hours
   - **Dependencies**: 6.1, 6.1a, 6.1b
+  - **Completed**: 2025-10-07
 
 ## Task Guidelines
 
@@ -818,16 +819,32 @@ A task is considered "Done" when:
 - ✅ Phase 3: DNS Record Management & SPF Flattening (10/10 tasks - 100%)
 
 **Current Phase**:
-- Phase 4: DNS Propagation Monitoring (3/5 tasks complete - 60%)
+- ✅ Phase 4: DNS Propagation Monitoring (5/5 tasks complete - 100%)
 - Phase 5: Email Account Provisioning (4/7 tasks complete - 57%)
 - Phase 6: Smartlead Integration & Compliance (1/8 tasks complete - API alignment done)
+- Phase 7: Frontend Wizard & Dashboard (1/18 tasks complete - Backend API docs)
 
-**Overall Progress**: 30/60 tasks completed (50%)
+**Overall Progress**: 31/60 tasks completed (51.7%)
 
 **Last Updated**: 2025-10-07
 
 **Recent Completion**:
-- ✅ Task 4.3: DNS Polling Job Service (just completed)
+- ✅ Task 7.18: Backend Integration Documentation (just completed)
+  - Created comprehensive `backend-api-reference.md` documentation
+  - Documented all Domain Management APIs (connectDomain, verifyNameservers, nameserver instructions)
+  - Documented all DNS Configuration APIs (setupEmailDNS, SPF/DKIM/DMARC/MX generators)
+  - Documented all DNS Polling & Status APIs (server actions for TanStack Query integration)
+  - Documented Email Provisioning APIs (Google Workspace account creation, credential management)
+  - Documented Smartlead Integration APIs (connection, warmup, campaign assignment)
+  - Complete wizard step integration guide with code examples
+  - TanStack Query patterns for 30-second polling
+  - Authentication patterns using Stack Auth
+  - Error handling patterns
+  - Complete type reference
+  - Ready for Phase 7 implementation
+
+**Previous Completion**:
+- ✅ Task 4.5: Real-Time DNS Status Server Action
   - Created `server/dns/polling-job.ts` - Background polling service with 30-second intervals
   - Implemented `lib/jobs/dns-poller.ts` - Server Action-based job queue integration
   - Created `lib/db/schema/dns-polling.ts` - DNS polling sessions database schema
