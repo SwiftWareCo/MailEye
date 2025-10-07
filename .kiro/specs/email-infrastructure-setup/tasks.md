@@ -322,11 +322,13 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 2 hours
   - **Dependencies**: 4.1
 
-- [ ] **4.3** DNS Polling Job Service
+- [x] **4.3** DNS Polling Job Service
   - **Description**: Implement background polling job that checks DNS propagation every 30 seconds
   - **Deliverables**:
-    - `server/dns/polling-job.ts` - Polling job implementation
-    - `lib/jobs/dns-poller.ts` - Job queue integration
+    - `server/dns/polling-job.ts` - Polling job implementation ✓
+    - `lib/jobs/dns-poller.ts` - Job queue integration ✓
+    - `lib/db/schema/dns-polling.ts` - DNS polling sessions schema ✓
+    - Unit tests (15 tests passing) ✓
   - **Requirements**: DNS Status Monitoring Requirements (30-second polling)
   - **Estimated Effort**: 2 hours
   - **Dependencies**: 4.2, 1.7
@@ -816,16 +818,26 @@ A task is considered "Done" when:
 - ✅ Phase 3: DNS Record Management & SPF Flattening (10/10 tasks - 100%)
 
 **Current Phase**:
-- Phase 4: DNS Propagation Monitoring (2/5 tasks complete - 40%)
+- Phase 4: DNS Propagation Monitoring (3/5 tasks complete - 60%)
 - Phase 5: Email Account Provisioning (4/7 tasks complete - 57%)
 - Phase 6: Smartlead Integration & Compliance (1/8 tasks complete - API alignment done)
 
-**Overall Progress**: 29/60 tasks completed (48%)
+**Overall Progress**: 30/60 tasks completed (50%)
 
-**Last Updated**: 2025-10-06
+**Last Updated**: 2025-10-07
 
 **Recent Completion**:
-- ✅ Task 4.2: DNS Propagation Status Checker (just completed)
+- ✅ Task 4.3: DNS Polling Job Service (just completed)
+  - Created `server/dns/polling-job.ts` - Background polling service with 30-second intervals
+  - Implemented `lib/jobs/dns-poller.ts` - Server Action-based job queue integration
+  - Created `lib/db/schema/dns-polling.ts` - DNS polling sessions database schema
+  - Built polling lifecycle: start → check → complete/timeout/cancel
+  - Added progress tracking and estimated completion calculations
+  - Comprehensive unit tests (15 tests passing in dns-poller integration layer)
+  - Frontend-friendly design: TanStack Query polls every 30s, no separate background process
+
+**Previous Completion**:
+- ✅ Task 4.2: DNS Propagation Status Checker
   - Created `server/dns/propagation-checker.ts` with core propagation logic
   - Implemented global coverage percentage calculator
   - Added database integration for updating propagation statuses
@@ -833,7 +845,7 @@ A task is considered "Done" when:
   - Added convenience functions: `checkSPFPropagation`, `checkDKIMPropagation`, `checkDMARCPropagation`, etc.
   - Created comprehensive unit tests (23 tests passing)
 
-**Previous Completion**:
+**Earlier Completion**:
 - ✅ Task 6.1: Smartlead Email Account Connection (API alignment completed)
   - Fixed warmup endpoint (PATCH → POST)
   - Replaced disconnect with proper inactivation flow

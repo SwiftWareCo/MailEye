@@ -8,3 +8,4 @@ export * from './spf-dmarc';
 export * from './email-accounts';
 export * from './smartlead';
 export * from './batch-operations';
+export * from './dns-polling';
