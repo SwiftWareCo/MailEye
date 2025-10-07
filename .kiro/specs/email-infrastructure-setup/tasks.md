@@ -311,11 +311,13 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 1.5 hours
   - **Dependencies**: 1.3
 
-- [ ] **4.2** DNS Propagation Status Checker
+- [x] **4.2** DNS Propagation Status Checker
   - **Description**: Check DNS record propagation status across global servers with coverage calculation
   - **Deliverables**:
-    - `server/dns/propagation-checker.ts` - Propagation status logic
-    - Global coverage percentage calculator
+    - `server/dns/propagation-checker.ts` - Propagation status logic ✓
+    - Global coverage percentage calculator ✓
+    - Database integration for updating propagation statuses ✓
+    - Unit tests (23 tests passing) ✓
   - **Requirements**: DNS Status Monitoring Requirements (R3.13-R3.14)
   - **Estimated Effort**: 2 hours
   - **Dependencies**: 4.1
@@ -814,14 +816,24 @@ A task is considered "Done" when:
 - ✅ Phase 3: DNS Record Management & SPF Flattening (10/10 tasks - 100%)
 
 **Current Phase**:
+- Phase 4: DNS Propagation Monitoring (2/5 tasks complete - 40%)
 - Phase 5: Email Account Provisioning (4/7 tasks complete - 57%)
 - Phase 6: Smartlead Integration & Compliance (1/8 tasks complete - API alignment done)
 
-**Overall Progress**: 28/60 tasks completed (47%)
+**Overall Progress**: 29/60 tasks completed (48%)
 
 **Last Updated**: 2025-10-06
 
 **Recent Completion**:
+- ✅ Task 4.2: DNS Propagation Status Checker (just completed)
+  - Created `server/dns/propagation-checker.ts` with core propagation logic
+  - Implemented global coverage percentage calculator
+  - Added database integration for updating propagation statuses
+  - Built helper functions: `buildFullDomainName`, `determinePropagationStatusEnum`
+  - Added convenience functions: `checkSPFPropagation`, `checkDKIMPropagation`, `checkDMARCPropagation`, etc.
+  - Created comprehensive unit tests (23 tests passing)
+
+**Previous Completion**:
 - ✅ Task 6.1: Smartlead Email Account Connection (API alignment completed)
   - Fixed warmup endpoint (PATCH → POST)
   - Replaced disconnect with proper inactivation flow
