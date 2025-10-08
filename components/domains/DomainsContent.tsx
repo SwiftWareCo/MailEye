@@ -15,6 +15,7 @@ import type { NameserverVerificationResult } from '@/server/domain/nameserver-ve
 import type { DNSSetupResult } from '@/server/dns/dns-manager';
 import type { EmailAccountResult } from '@/lib/types/email';
 import type { SmartleadConnectionResult } from '@/lib/types/smartlead';
+import type { PollingSession } from '@/server/dns/polling-job';
 
 interface DomainsContentProps {
   userId: string;
@@ -25,6 +26,9 @@ interface DomainsContentProps {
   // Wizard Server Actions (all required for end-to-end setup)
   connectDomainAction: (input: DomainConnectionInput) => Promise<DomainConnectionResult>;
   setupDNSAction: (domainId: string) => Promise<DNSSetupResult>;
+  startPollingAction: (
+    domainId: string
+  ) => Promise<{ success: boolean; data?: PollingSession; error?: string }>;
   createEmailAccountAction: (params: {
     domainId: string;
     username: string;
@@ -41,6 +45,7 @@ export function DomainsContent({
   verifyNameserversAction,
   connectDomainAction,
   setupDNSAction,
+  startPollingAction,
   createEmailAccountAction,
   connectToSmartleadAction,
 }: DomainsContentProps) {
@@ -84,6 +89,7 @@ export function DomainsContent({
           connectDomainAction={connectDomainAction}
           verifyNameserversAction={verifyNameserversAction}
           setupDNSAction={setupDNSAction}
+          startPollingAction={startPollingAction}
           createEmailAccountAction={createEmailAccountAction}
           connectToSmartleadAction={connectToSmartleadAction}
         />

@@ -16,9 +16,10 @@ export interface WizardData {
 
   // Step 2: Nameserver Verification (tracks status)
   nameserversVerified?: boolean;
+  skippedVerification?: boolean;
 
   // Step 3: DNS Configuration (tracks status)
-  dnsConfigured?: boolean;
+dnsConfigured?: boolean;
 
   // Step 4: DNS Monitoring
   pollingSessionId?: string;
@@ -153,7 +154,7 @@ export function useSetupWizard() {
       case 1: // Domain Connection
         return !!wizardData.domainId;
       case 2: // Nameserver Verification
-        return !!wizardData.nameserversVerified;
+        return !!wizardData.nameserversVerified || !!wizardData.skippedVerification;
       case 3: // DNS Configuration
         return !!wizardData.dnsConfigured && !!wizardData.pollingSessionId;
       case 4: // DNS Monitoring

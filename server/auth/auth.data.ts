@@ -2,7 +2,6 @@ import 'server-only';
 
 import { stackServerApp } from '../../stack/server';
 import { db } from '../../lib/db';
-import { userActivities } from '../../lib/db/schema';
 import { eq, desc } from 'drizzle-orm';
 
 // Stack Auth metadata type definitions
@@ -59,23 +58,6 @@ export async function getUserWithMetadata(): Promise<UserWithMetadata | null> {
   } catch (error) {
     console.error('Error getting user with metadata:', error);
     return null;
-  }
-}
-
-// Get user's recent activities from database
-export async function getUserActivities(userId: string, limit: number = 10) {
-  try {
-    const activities = await db
-      .select()
-      .from(userActivities)
-      .where(eq(userActivities.userId, userId))
-      .orderBy(desc(userActivities.createdAt))
-      .limit(limit);
-
-    return activities;
-  } catch (error) {
-    console.error('Error getting user activities:', error);
-    return [];
   }
 }
 

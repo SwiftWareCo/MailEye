@@ -308,6 +308,120 @@ LEFT JOIN neon_auth.users_sync ON campaigns.user_id = users_sync.id
 WHERE users_sync.deleted_at IS NULL;
 ```
 
+### Credentials Management System
+
+#### Centralized Credentials Architecture:
+All service credentials (Cloudflare, Google Workspace, Smartlead) are stored in Stack Auth `serverMetadata` (automatically encrypted) and managed through a centralized system in `server/credentials/`.
+
+**Core Files:**
+- `lib/types/credentials.ts` - TypeScript type definitions for all service credentials
+- `server/credentials/credentials.data.ts` - Centralized getters for retrieving credentials
+- `server/credentials/credentials.actions.ts` - Actions for saving/removing credentials
+- `server/cloudflare/cloudflare.actions.ts` - Cloudflare-specific credential setup
+- `server/google-workspace/google-workspace.actions.ts` - Google Workspace credential setup
+- `server/smartlead/credentials.actions.ts` - Smartlead credential setup
+
+#### Getting User Credentials:
+
+**✅ Correct way - Use centralized getters:**
+```typescript
+import {
+  getCloudflareCredentials,
+  getGoogleWorkspaceCredentials,
+  getSmartleadCredentials,
+  getUserCredentials,
+  hasCloudflareCredentials,
+  hasGoogleWorkspaceCredentials,
+  hasSmartleadCredentials
+} from '@/server/credentials/credentials.data';
+
+// Get specific service credentials
+const cfCreds = await getCloudflareCredentials();
+// Returns: { apiToken: string, accountId: string, connectedAt: string } | null
+
+const gwCreds = await getGoogleWorkspaceCredentials();
+// Returns: { serviceAccountEmail, privateKey, adminEmail, customerId?, connectedAt } | null
+
+const slCreds = await getSmartleadCredentials();
+// Returns: { apiKey: string, connectedAt: string } | null
+
+// Get all credentials at once
+const allCreds = await getUserCredentials();
+// Returns: { cloudflare?, googleWorkspace?, smartlead? } | null
+
+// Check if credentials exist
+const hasCF = await hasCloudflareCredentials(); // boolean
+const hasGW = await hasGoogleWorkspaceCredentials(); // boolean
+const hasSL = await hasSmartleadCredentials(); // boolean
+```
+
+**❌ Don't access serverMetadata directly:**
+```typescript
+// DON'T DO THIS:
+const user = await stackServerApp.getUser();
+const apiToken = user.serverMetadata?.cloudflare?.apiToken; // BAD - not type-safe, no centralization
+```
+
+#### Saving Credentials:
+
+Each service has validation built-in before saving:
+
+```typescript
+// Cloudflare (validates token by testing API)
+import { saveCloudflareCredentialsAction } from '@/server/cloudflare/cloudflare.actions';
+const result = await saveCloudflareCredentialsAction(apiToken, accountId);
+// Returns: { success: boolean, error?: string }
+
+// Google Workspace (validates by testing Admin SDK)
+import { saveGoogleWorkspaceCredentialsAction } from '@/server/google-workspace/google-workspace.actions';
+const result = await saveGoogleWorkspaceCredentialsAction(
+  serviceAccountEmail,
+  privateKey,
+  adminEmail,
+  customerId // optional
+);
+
+// Smartlead (validates API key)
+import { saveSmartleadCredentialsAction } from '@/server/smartlead/credentials.actions';
+const result = await saveSmartleadCredentialsAction(apiKey);
+```
+
+#### Removing Credentials:
+
+```typescript
+import { removeServiceCredentials } from '@/server/credentials/credentials.actions';
+
+// Remove specific service
+await removeServiceCredentials('cloudflare');
+await removeServiceCredentials('googleWorkspace');
+await removeServiceCredentials('smartlead');
+
+// Or use service-specific disconnect actions
+import { disconnectCloudflareAction } from '@/server/cloudflare/cloudflare.actions';
+import { disconnectGoogleWorkspaceAction } from '@/server/google-workspace/google-workspace.actions';
+import { disconnectSmartleadAction } from '@/server/smartlead/credentials.actions';
+
+await disconnectCloudflareAction();
+await disconnectGoogleWorkspaceAction();
+await disconnectSmartleadAction();
+```
+
+#### Credential Setup Flow:
+
+**Current Implementation:**
+1. **Cloudflare**: Required first - shown automatically on domains page if not connected
+2. **Google Workspace**: Optional - needed for DKIM record generation (DNS setup will skip DKIM with warning if not configured)
+3. **Smartlead**: Optional - needed for email warmup integration
+
+**UI Components:**
+- `components/domains/CloudflareSetup.tsx` - Cloudflare connection UI (implemented)
+- Google Workspace and Smartlead setup UIs need to be created if user-specific credentials are desired
+
+**Note on Google Workspace:**
+- Currently uses global environment variables (`GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `GOOGLE_ADMIN_EMAIL`)
+- Can be made user-specific by creating a setup UI component and using the save action
+- DNS setup gracefully handles missing Google Workspace credentials by skipping DKIM records
+
 ## Code Quality & Linting
 
 ### Running Linter

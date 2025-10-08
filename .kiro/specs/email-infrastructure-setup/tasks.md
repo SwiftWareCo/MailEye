@@ -525,15 +525,33 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 2 hours
   - **Dependencies**: 7.1, 2.2
 
-- [ ] **7.3** Nameserver Verification UI
+- [x] **7.3** Nameserver Verification UI
   - **Description**: Create nameserver verification interface with retry and manual skip options
   - **Deliverables**:
-    - `components/setup/NameserverVerification.tsx` - Verification UI
-    - Real-time verification status
-    - Manual skip for advanced users
+    - `components/setup/NameserverVerificationStep.tsx` - Verification UI ✓
+    - `lib/hooks/use-nameserver-verification.ts` - TanStack Query hook with 30s polling ✓
+    - Real-time verification status ✓
+    - Manual skip for advanced users ✓
+    - Auto-advance countdown when verified ✓
   - **Requirements**: Domain Management Requirements (R3.3)
   - **Estimated Effort**: 1.5 hours
   - **Dependencies**: 7.2, 2.3
+  - **Completed**: 2025-10-08
+
+- [x] **7.3a** DNS Configuration Step UI
+  - **Description**: Create DNS configuration interface with "Configure DNS Records" button to set up SPF, DKIM, DMARC, and MX records
+  - **Deliverables**:
+    - `components/setup/DNSConfigurationStep.tsx` - DNS setup UI
+    - Integration with `setupDNSAction()` Server Action
+    - Display DNS records being created (SPF, DKIM, DMARC, MX, Tracking CNAME)
+    - Loading states during Cloudflare API operations
+    - Success summary with created records
+    - Error handling with user-friendly messages
+    - Auto-advance to Step 4 (DNS Monitoring) when complete
+  - **Requirements**: DNS Automation Requirements (R3.6-R3.11), User Experience
+  - **Estimated Effort**: 2.5 hours
+  - **Dependencies**: 7.3, 3.10
+  - **Note**: This step calls `setupEmailDNS()` which creates all DNS records via Cloudflare API and starts the polling session for Step 4
 
 - [ ] **7.4** DNS Status Monitor Component
   - **Description**: Create real-time DNS propagation status display with 30-second polling
@@ -552,7 +570,7 @@ This document breaks down the implementation of the Email Infrastructure Setup T
     - Optimistic updates and caching configuration
   - **Requirements**: Real-Time Updates, State Management
   - **Estimated Effort**: 1.5 hours
-  - **Dependencies**: 7.5, 4.5
+  - **Dependencies**: 7.4, 4.5
 
 - [ ] **7.6** Email Account Creation Form
   - **Description**: Create form for email account details (username, name, password options)
@@ -822,14 +840,25 @@ A task is considered "Done" when:
 - ✅ Phase 4: DNS Propagation Monitoring (5/5 tasks complete - 100%)
 - Phase 5: Email Account Provisioning (4/7 tasks complete - 57%)
 - Phase 6: Smartlead Integration & Compliance (1/8 tasks complete - API alignment done)
-- Phase 7: Frontend Wizard & Dashboard (1/18 tasks complete - Backend API docs)
+- Phase 7: Frontend Wizard & Dashboard (2/19 tasks complete - 10.5%)
 
-**Overall Progress**: 31/60 tasks completed (51.7%)
+**Overall Progress**: 32/61 tasks completed (52.5%)
 
-**Last Updated**: 2025-10-07
+**Last Updated**: 2025-10-08
 
 **Recent Completion**:
-- ✅ Task 7.18: Backend Integration Documentation (just completed)
+- ✅ Task 7.3: Nameserver Verification UI (just completed)
+  - Created `components/setup/NameserverVerificationStep.tsx` - Full verification UI with status cards
+  - Created `lib/hooks/use-nameserver-verification.ts` - TanStack Query hook with 30-second polling
+  - Real-time nameserver detection with visual comparison (expected vs. current)
+  - Auto-advance countdown (2 seconds) when verification succeeds
+  - Manual "Check Now" button for user-triggered verification
+  - Copy-to-clipboard for nameserver values
+  - Skip option for advanced users
+  - Comprehensive error handling and loading states
+
+**Previous Completion**:
+- ✅ Task 7.18: Backend Integration Documentation
   - Created comprehensive `backend-api-reference.md` documentation
   - Documented all Domain Management APIs (connectDomain, verifyNameservers, nameserver instructions)
   - Documented all DNS Configuration APIs (setupEmailDNS, SPF/DKIM/DMARC/MX generators)
@@ -880,12 +909,14 @@ A task is considered "Done" when:
 - Task 6.1a: Campaign Assignment Integration (needs Server Actions wrapper)
 - Task 6.1b: Warmup Stats Polling Service (background job)
 - Task 6.4a: Warmup Health Monitoring Dashboard (UI for 7-day stats)
-- Task 7.18: Backend Integration Documentation (critical for Phase 7)
+- Task 7.3a: DNS Configuration Step UI (missing wizard step - added 2025-10-08)
+- Task 7.18: Backend Integration Documentation (completed)
 
 **Next Steps**:
-1. Complete Phase 5 remaining tasks (5.5, 5.6, 5.7)
-2. Implement warmup stats polling (6.1b)
-3. Build campaign assignment Server Actions (6.1a)
-4. Create backend API documentation (7.18) before starting Phase 7
+1. Implement Task 7.3a: DNS Configuration Step UI (create SPF/DKIM/DMARC/MX records)
+2. Implement Task 7.4: DNS Status Monitor Component (propagation monitoring)
+3. Complete Phase 5 remaining tasks (5.5, 5.6, 5.7)
+4. Implement warmup stats polling (6.1b)
+5. Build campaign assignment Server Actions (6.1a)
 
 **Estimated Completion**: 2-3 weeks for remaining implementation

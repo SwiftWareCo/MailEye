@@ -19,7 +19,6 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 interface CloudflareSetupProps {
-  userId: string;
   saveCredentialsAction: (token: string, accountId: string) => Promise<{ success: boolean; error?: string }>;
 }
 

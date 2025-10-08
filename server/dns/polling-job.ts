@@ -261,11 +261,26 @@ export async function checkPollingProgress(
 
   // Update database with propagation status for each record
   const updatePromises = results.map(({ recordId, status }) => {
-    const propagationStatus = status.isPropagated ? 'propagated' : 'pending';
+    // Determine propagation status based on coverage
+    let propagationStatus: string;
+    if (status.propagatedServers === status.totalServers && status.totalServers > 0) {
+      propagationStatus = 'propagated';
+    } else if (status.propagatedServers > 0) {
+      propagationStatus = 'propagating';
+    } else {
+      propagationStatus = 'pending';
+    }
+
+    // Calculate coverage percentage (0-100)
+    const propagationCoverage = status.totalServers > 0
+      ? Math.round((status.propagatedServers / status.totalServers) * 100)
+      : 0;
+
     return db
       .update(dnsRecords)
       .set({
         propagationStatus,
+        propagationCoverage,
         lastCheckedAt: now,
         updatedAt: now,
       })

@@ -7,9 +7,11 @@
 'use server';
 
 import Cloudflare from 'cloudflare';
-import { stackServerApp } from '@/stack/server';
 import { Account } from 'cloudflare/resources/accounts/accounts.mjs';
 import { Zone } from 'cloudflare/resources/zones/zones.mjs';
+import { updateUserCredentials } from '../credentials/credentials.actions';
+import { getCloudflareCredentials } from '../credentials/credentials.data';
+import type { CloudflareCredentials } from '@/lib/types/credentials';
 
 /**
  * Save user's Cloudflare credentials to Stack Auth metadata
@@ -17,7 +19,6 @@ import { Zone } from 'cloudflare/resources/zones/zones.mjs';
  * Validates credentials by testing API access before saving
  */
 export async function saveCloudflareCredentialsAction(
-  userId: string,
   apiToken: string,
   accountId: string
 ): Promise<{ success: boolean; error?: string }> {
@@ -65,27 +66,22 @@ export async function saveCloudflareCredentialsAction(
       console.warn('Could not verify account ID, proceeding anyway:', error);
     }
 
-    // Get user and update Stack Auth metadata (automatically encrypted)
-    const user = await stackServerApp.getUser();
-    if (!user) {
-      return {
-        success: false,
-        error: 'User not found. Please log in and try again.',
-      };
-    }
+    // Save credentials using centralized credentials system
+    const credentials: CloudflareCredentials = {
+      apiToken,
+      accountId,
+      connectedAt: new Date().toISOString(),
+    };
 
-    // Update user metadata
-    await user.update({
-      serverMetadata: {
-        cloudflare: {
-          apiToken,
-          accountId,
-          connectedAt: new Date().toISOString(),
-        }
-      }
+    const result = await updateUserCredentials({
+      cloudflare: credentials,
     });
 
-    console.log(`[Cloudflare] User ${userId} connected Cloudflare account`);
+    if (!result.success) {
+      return result;
+    }
+
+    console.log(`[Cloudflare] User connected Cloudflare account`);
 
     return { success: true };
   } catch (error) {
@@ -101,56 +97,42 @@ export async function saveCloudflareCredentialsAction(
  * Get user's Cloudflare credentials from Stack Auth metadata
  *
  * Returns null if not connected
+ *
+ * @deprecated Use getCloudflareCredentials from @/server/credentials/credentials.data instead
  */
 export async function getUserCloudflareCredentials(
 ): Promise<{ apiToken: string; accountId: string } | null> {
-  try {
-    const user = await stackServerApp.getUser();
-    if (!user) {
-      return null;
-    }
+  const credentials = await getCloudflareCredentials();
 
-    const cloudflare = user.serverMetadata?.cloudflare as
-      | { apiToken: string; accountId: string; connectedAt: string }
-      | undefined;
-
-    if (!cloudflare?.apiToken || !cloudflare?.accountId) {
-      return null;
-    }
-
-    return {
-      apiToken: cloudflare.apiToken,
-      accountId: cloudflare.accountId,
-    };
-  } catch (error) {
-    console.error('Error getting Cloudflare credentials:', error);
+  if (!credentials) {
     return null;
   }
+
+  return {
+    apiToken: credentials.apiToken,
+    accountId: credentials.accountId,
+  };
 }
 
 /**
  * Disconnect user's Cloudflare account
  */
-export async function disconnectCloudflareAction(
-  userId: string
-): Promise<{ success: boolean; error?: string }> {
+export async function disconnectCloudflareAction(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
   try {
-    const user = await stackServerApp.getUser();
-    if (!user) {
-      return {
-        success: false,
-        error: 'User not found',
-      };
+    const { removeServiceCredentials } = await import(
+      '../credentials/credentials.actions'
+    );
+
+    const result = await removeServiceCredentials('cloudflare');
+
+    if (result.success) {
+      console.log('[Cloudflare] User disconnected Cloudflare account');
     }
 
-    // Remove cloudflare from metadata
-    await user.update({
-      serverMetadata: {}
-    });
-
-    console.log(`[Cloudflare] User ${userId} disconnected Cloudflare account`);
-
-    return { success: true };
+    return result;
   } catch (error) {
     console.error('Error disconnecting Cloudflare:', error);
     return {

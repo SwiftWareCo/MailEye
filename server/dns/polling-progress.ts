@@ -15,7 +15,6 @@ import { eq, and } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { dnsPollingSession } from '@/lib/db/schema/dns-polling';
 import { dnsRecords } from '@/lib/db/schema/dns-records';
-import type { PollingSession } from './polling-job';
 
 /**
  * Progress metrics for a polling session
@@ -55,16 +54,14 @@ export interface PollingProgressReport {
   completedAt: Date | null;
   isComplete: boolean;
   hasTimedOut: boolean;
-}
-
-/**
- * DNS record with TTL and propagation info
- */
-interface DNSRecordWithTTL {
-  id: string;
-  ttl: number | null;
-  propagationStatus: string | null;
-  lastCheckedAt: Date | null;
+  records: Array<{
+    id: string;
+    type: string;
+    name: string | null;
+    content: string | null;
+    propagationStatus: string | null;
+    propagationCoverage: number | null;
+  }>;
 }
 
 /**
@@ -282,6 +279,24 @@ export async function getProgressReport(
   const progress = await calculatePollingProgress(sessionId);
   const eta = await calculateEstimatedCompletion(sessionId);
 
+  // Fetch DNS records with propagation status
+  const records = await db
+    .select({
+      id: dnsRecords.id,
+      type: dnsRecords.recordType,
+      name: dnsRecords.name,
+      content: dnsRecords.value,
+      propagationStatus: dnsRecords.propagationStatus,
+      propagationCoverage: dnsRecords.propagationCoverage,
+    })
+    .from(dnsRecords)
+    .where(
+      and(
+        eq(dnsRecords.domainId, session.domainId),
+        eq(dnsRecords.status, 'active')
+      )
+    );
+
   // Determine completion and timeout status
   const isComplete = session.status === 'completed';
   const hasTimedOut = session.status === 'timeout';
@@ -297,6 +312,7 @@ export async function getProgressReport(
     completedAt: session.completedAt ? new Date(session.completedAt) : null,
     isComplete,
     hasTimedOut,
+    records,
   };
 }
 

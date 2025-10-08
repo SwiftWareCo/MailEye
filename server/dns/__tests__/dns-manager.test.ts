@@ -690,11 +690,11 @@ describe('DNS Configuration Orchestrator', () => {
       );
 
       vi.mocked(getDNSRecordsForDomain).mockResolvedValue([
-        { id: '1', domainId: 'domain-123', purpose: 'spf', recordType: 'TXT', name: '@', value: 'v=spf1 ~all', ttl: 3600, priority: null, status: 'active', lastCheckedAt: null, propagationStatus: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
-        { id: '2', domainId: 'domain-123', purpose: 'dkim', recordType: 'TXT', name: 'google._domainkey', value: 'v=DKIM1...', ttl: 3600, priority: null, status: 'active', lastCheckedAt: null, propagationStatus: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
-        { id: '3', domainId: 'domain-123', purpose: 'dmarc', recordType: 'TXT', name: '_dmarc', value: 'v=DMARC1; p=none', ttl: 3600, priority: null, status: 'active', lastCheckedAt: null, propagationStatus: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
-        { id: '4', domainId: 'domain-123', purpose: 'mx', recordType: 'MX', name: '@', value: 'smtp.google.com', ttl: 3600, priority: 1, status: 'active', lastCheckedAt: null, propagationStatus: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
-        { id: '5', domainId: 'domain-123', purpose: 'tracking', recordType: 'CNAME', name: 'track', value: 'open.sleadtrack.com', ttl: 3600, priority: null, status: 'active', lastCheckedAt: null, propagationStatus: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: '1', domainId: 'domain-123', purpose: 'spf', recordType: 'TXT', name: '@', value: 'v=spf1 ~all', ttl: 3600, priority: null, status: 'active', lastCheckedAt: null, propagationStatus: null, propagationCoverage: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: '2', domainId: 'domain-123', purpose: 'dkim', recordType: 'TXT', name: 'google._domainkey', value: 'v=DKIM1...', ttl: 3600, priority: null, status: 'active', lastCheckedAt: null, propagationStatus: null, propagationCoverage: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: '3', domainId: 'domain-123', purpose: 'dmarc', recordType: 'TXT', name: '_dmarc', value: 'v=DMARC1; p=none', ttl: 3600, priority: null, status: 'active', lastCheckedAt: null, propagationStatus: null, propagationCoverage: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: '4', domainId: 'domain-123', purpose: 'mx', recordType: 'MX', name: '@', value: 'smtp.google.com', ttl: 3600, priority: 1, status: 'active', lastCheckedAt: null, propagationStatus: null, propagationCoverage: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: '5', domainId: 'domain-123', purpose: 'tracking', recordType: 'CNAME', name: 'track', value: 'open.sleadtrack.com', ttl: 3600, priority: null, status: 'active', lastCheckedAt: null, propagationStatus: null, propagationCoverage: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
       ]);
 
       const result = await verifyDNSConfiguration('domain-123');
@@ -714,8 +714,8 @@ describe('DNS Configuration Orchestrator', () => {
       );
 
       vi.mocked(getDNSRecordsForDomain).mockResolvedValue([
-        { id: '1', domainId: 'domain-123', purpose: 'spf', recordType: 'TXT', name: '@', value: 'v=spf1 ~all', ttl: 3600, priority: null, status: 'active', lastCheckedAt: null, propagationStatus: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
-        { id: '2', domainId: 'domain-123', purpose: 'mx', recordType: 'MX', name: '@', value: 'smtp.google.com', ttl: 3600, priority: 1, status: 'active', lastCheckedAt: null, propagationStatus: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: '1', domainId: 'domain-123', purpose: 'spf', recordType: 'TXT', name: '@', value: 'v=spf1 ~all', ttl: 3600, priority: null, status: 'active', lastCheckedAt: null, propagationStatus: null, propagationCoverage: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
+        { id: '2', domainId: 'domain-123', purpose: 'mx', recordType: 'MX', name: '@', value: 'smtp.google.com', ttl: 3600, priority: 1, status: 'active', lastCheckedAt: null, propagationStatus: null, propagationCoverage: null, metadata: null, createdAt: new Date(), updatedAt: new Date() },
       ]);
 
       const result = await verifyDNSConfiguration('domain-123');

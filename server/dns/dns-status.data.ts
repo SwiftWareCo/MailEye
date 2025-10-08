@@ -184,11 +184,12 @@ export async function getDomainActivePollingSession(
  */
 export interface DNSRecordStatus {
   id: string;
-  recordType: string;
-  name: string;
-  value: string;
+  type: string; // DNS record type (TXT, MX, CNAME, etc.)
+  name: string | null;
+  content: string | null; // DNS record value/content
   purpose: string | null;
   propagationStatus: string | null;
+  propagationCoverage: number | null; // 0-100% coverage
   lastCheckedAt: Date | null;
 }
 
@@ -219,11 +220,12 @@ export async function getDNSRecordStatuses(
     const records = await db
       .select({
         id: dnsRecords.id,
-        recordType: dnsRecords.recordType,
+        type: dnsRecords.recordType,
         name: dnsRecords.name,
-        value: dnsRecords.value,
+        content: dnsRecords.value,
         purpose: dnsRecords.purpose,
         propagationStatus: dnsRecords.propagationStatus,
+        propagationCoverage: dnsRecords.propagationCoverage,
         lastCheckedAt: dnsRecords.lastCheckedAt,
       })
       .from(dnsRecords)

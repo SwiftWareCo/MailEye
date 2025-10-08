@@ -156,6 +156,7 @@ export async function generateDKIMRecord(
   const { domain, provider, selector, keyLength = 2048 } = config;
 
   const errors: string[] = [];
+  const warnings: string[] = [];
 
   // For now, we only support Google Workspace in the automated flow
   // Other providers would require different approaches
@@ -180,6 +181,47 @@ export async function generateDKIMRecord(
       warnings: [],
       generatedAt: new Date(),
     };
+  }
+
+  // Check if user has Google Workspace credentials configured
+  try {
+    const { hasGoogleWorkspaceCredentials } = await import('@/server/credentials/credentials.data');
+    const hasCredentials = await hasGoogleWorkspaceCredentials();
+
+    if (!hasCredentials) {
+      warnings.push(
+        'Google Workspace credentials not configured. DKIM setup requires Google Workspace Admin SDK access.'
+      );
+      errors.push(
+        'Google Workspace not connected. Please configure Google Workspace credentials first, ' +
+        'or manually generate DKIM in Google Admin Console.'
+      );
+
+      return {
+        success: false,
+        domain,
+        selector: selector || DEFAULT_SELECTORS[provider],
+        recordName: `${selector || DEFAULT_SELECTORS[provider]}._domainkey.${domain}`,
+        recordType: 'TXT',
+        recordValue: '',
+        publicKey: '',
+        keyLength,
+        requiresSplitting: false,
+        characterCount: 0,
+        errors,
+        warnings: [
+          ...warnings,
+          'Manual DKIM setup:',
+          '1. Go to admin.google.com > Apps > Google Workspace > Gmail > Authenticate email',
+          '2. Select your domain and click "Generate new record"',
+          '3. Choose 2048-bit key length',
+          '4. Copy the generated DKIM TXT record and add it to your DNS manually',
+        ],
+        generatedAt: new Date(),
+      };
+    }
+  } catch (error) {
+    console.error('Error checking Google Workspace credentials:', error);
   }
 
   // Note: In a real implementation, this would integrate with Google Workspace Admin SDK

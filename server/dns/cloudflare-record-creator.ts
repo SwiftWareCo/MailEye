@@ -100,7 +100,18 @@ export async function createDNSRecordsBatch(
   const results: DNSRecordResult[] = [];
   const errors: string[] = [];
 
-  // Step 1: Fetch existing DNS records from Cloudflare to detect duplicates
+  // Step 1: Get zone info to extract domain name for proper comparison
+  let zoneName = '';
+  try {
+    const { getZoneInfo } = await import('@/lib/clients/cloudflare');
+    const zoneInfo = await getZoneInfo(apiToken, zoneId);
+    zoneName = zoneInfo.name;
+  } catch (error) {
+    console.error('Error fetching zone info:', error);
+    errors.push('Failed to fetch zone information');
+  }
+
+  // Step 2: Fetch existing DNS records from Cloudflare to detect duplicates
   let existingRecords: Array<{ type: string; name: string; content: string }> = [];
 
   try {
@@ -117,14 +128,35 @@ export async function createDNSRecordsBatch(
     errors.push('Failed to fetch existing DNS records for duplicate detection');
   }
 
-  // Step 2: Process each record
+  // Helper function to normalize record names for comparison
+  const normalizeRecordName = (name: string): string => {
+    if (!zoneName) return name;
+
+    // If name is "@", it represents the root domain
+    if (name === '@') {
+      return zoneName;
+    }
+
+    // If name already includes the zone name, return as-is
+    if (name.endsWith(`.${zoneName}`) || name === zoneName) {
+      return name;
+    }
+
+    // Otherwise, append zone name
+    return `${name}.${zoneName}`;
+  };
+
+  // Step 3: Process each record
   for (const record of records) {
     try {
+      // Normalize the record name for comparison
+      const normalizedRecordName = normalizeRecordName(record.name);
+
       // Check for duplicates
       const isDuplicate = existingRecords.some(
         (existing) =>
           existing.type === record.type &&
-          existing.name === record.name &&
+          existing.name === normalizedRecordName &&
           existing.content === record.content
       );
 

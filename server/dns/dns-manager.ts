@@ -204,10 +204,31 @@ export async function setupEmailDNS(
     if (dkimGeneration.success && dkimGeneration.records) {
       allRecords.push(...dkimGeneration.records);
     } else {
-      errors.push(...(dkimGeneration.errors || []));
+      // Check if error is due to missing Google Workspace credentials
+      const isGoogleWorkspaceError = dkimGeneration.errors?.some(
+        (error) =>
+          error.includes('Google Workspace not connected') ||
+          error.includes('Google Workspace credentials')
+      );
+
+      if (isGoogleWorkspaceError) {
+        // Treat as warning instead of error - DNS setup can continue without DKIM
+        warnings.push(
+          'DKIM record skipped: Google Workspace credentials not configured. ' +
+          'You can add DKIM records manually later after configuring Google Workspace.'
+        );
+        warnings.push(...(dkimGeneration.errors || []));
+        warnings.push(...(dkimGeneration.warnings || []));
+      } else {
+        // Other DKIM errors are still treated as errors
+        errors.push(...(dkimGeneration.errors || []));
+        warnings.push(...(dkimGeneration.warnings || []));
+      }
     }
 
-    warnings.push(...(dkimGeneration.warnings || []));
+    if (dkimGeneration.success || dkimGeneration.warnings) {
+      warnings.push(...(dkimGeneration.warnings || []));
+    }
   } catch (error) {
     console.error('Error generating DKIM records:', error);
     dkimResult = {
@@ -218,7 +239,13 @@ export async function setupEmailDNS(
         `DKIM generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       ],
     };
-    errors.push(...(dkimResult.errors || []));
+    // Treat unexpected errors as warnings too if Google Workspace is involved
+    const errorMessage = error instanceof Error ? error.message : '';
+    if (errorMessage.includes('Google Workspace')) {
+      warnings.push(...(dkimResult.errors || []));
+    } else {
+      errors.push(...(dkimResult.errors || []));
+    }
   }
 
   // Step 3: Generate DMARC record

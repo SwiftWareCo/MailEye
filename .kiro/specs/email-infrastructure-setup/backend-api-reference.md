@@ -206,8 +206,8 @@ export async function connectDomainAction(input: DomainConnectionInput) {
   }
 
   // 2. Get user's Cloudflare credentials from metadata
-  const cloudflareToken = user.serverMetadata?.cloudflareApiToken;
-  const cloudflareAccountId = user.serverMetadata?.cloudflareAccountId;
+  const cloudflareToken = user.serverMetadata?.cloudflare.apiToken;
+  const cloudflareAccountId = user.serverMetadata?.cloudflare.accountId;
 
   if (!cloudflareToken || !cloudflareAccountId) {
     return {
@@ -670,7 +670,7 @@ export async function setupDNSAction(domainId: string) {
   }
 
   // Get Cloudflare credentials
-  const apiToken = user.serverMetadata?.cloudflareApiToken;
+  const apiToken = user.serverMetadata?.cloudflare.apiToken;
   if (!apiToken) {
     return { success: false, error: 'Cloudflare credentials not found' };
   }

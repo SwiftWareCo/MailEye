@@ -21,6 +21,7 @@ import {
   syncCloudflareZonesToDatabase,
 } from '@/server/cloudflare/cloudflare.actions';
 import { setupDNSAction } from '@/server/dns/dns.actions';
+import { startDNSPollingAction } from '@/server/dns/dns-status.actions';
 import { createEmailAccountAction } from '@/server/email/email.actions';
 import { connectToSmartleadAction } from '@/server/smartlead/smartlead.actions';
 
@@ -43,8 +44,7 @@ export default async function DomainsPage() {
 
   // If no Cloudflare credentials, show setup component
   if (!cloudflareCredentials) {
-    const boundSaveCredentials = saveCloudflareCredentialsAction.bind(null, user.id);
-    return <CloudflareSetup userId={user.id} saveCredentialsAction={boundSaveCredentials} />;
+    return <CloudflareSetup saveCredentialsAction={saveCloudflareCredentialsAction} />;
   }
 
   // Sync existing Cloudflare zones to database (if any)
@@ -68,6 +68,7 @@ export default async function DomainsPage() {
       deleteDomainAction={boundDeleteDomain}
       verifyNameserversAction={boundVerifyNameservers}
       setupDNSAction={setupDNSAction}
+      startPollingAction={startDNSPollingAction}
       createEmailAccountAction={createEmailAccountAction}
       connectToSmartleadAction={connectToSmartleadAction}
     />

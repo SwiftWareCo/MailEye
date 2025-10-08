@@ -35,7 +35,13 @@ export const smartleadConfig = pgTable("smartlead_config", {
  */
 export const smartleadAccountMappings = pgTable("smartlead_account_mappings", {
   id: uuid("id").primaryKey().defaultRandom(),
-  emailAccountId: uuid("email_account_id").notNull().references(() => emailAccounts.id, { onDelete: "cascade" }).unique(),
+  emailAccountId: uuid("email_account_id")
+    .notNull()
+    .references(() => emailAccounts.id, {
+      onDelete: "cascade",
+      onUpdate: "no action"
+    })
+    .unique(),
 
   // Smartlead data
   smartleadEmailAccountId: varchar("smartlead_email_account_id", { length: 255 }).notNull().unique(),

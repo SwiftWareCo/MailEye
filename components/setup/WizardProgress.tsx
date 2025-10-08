@@ -81,7 +81,7 @@ export function WizardProgress({
   // Horizontal variant (default)
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between">
+      <div className="flex justify-between">
         {steps.map((step, index) => {
           const stepNumber = index + 1;
           const isActive = currentStep === stepNumber;
@@ -90,25 +90,33 @@ export function WizardProgress({
           const isLast = stepNumber === steps.length;
 
           return (
-            <div key={step.id} className="flex items-center flex-1">
-              {/* Step indicator */}
-              <button
-                onClick={() => isClickable && onStepClick(stepNumber)}
-                disabled={!isClickable}
-                className={cn(
-                  'flex flex-col items-center gap-2 group',
-                  isClickable && 'cursor-pointer',
-                  !isClickable && 'cursor-default'
-                )}
-              >
-                {/* Icon */}
-                <div
+            <div key={step.id} className="flex-1 flex flex-col items-center">
+              {/* Circle and connector line row */}
+              <div className="w-full flex items-center justify-center">
+                {/* Spacer for proper centering */}
+                <div className="flex-1 flex items-center justify-end">
+                  {/* Previous step's connector line (right half) */}
+                  {stepNumber > 1 && (
+                    <div
+                      className={cn(
+                        'w-full h-0.5 transition-colors',
+                        isStepCompleted(stepNumber - 1) ? 'bg-primary' : 'bg-muted'
+                      )}
+                    />
+                  )}
+                </div>
+
+                {/* Step indicator button - centered */}
+                <button
+                  onClick={() => isClickable && onStepClick(stepNumber)}
+                  disabled={!isClickable}
                   className={cn(
-                    'flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all',
+                    'flex-shrink-0 mx-2 flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all group',
                     isCompleted && 'border-primary bg-primary text-primary-foreground',
                     isActive && !isCompleted && 'border-primary bg-background',
                     !isActive && !isCompleted && 'border-muted bg-muted text-muted-foreground',
-                    isClickable && 'group-hover:scale-110 group-hover:border-primary'
+                    isClickable && 'cursor-pointer group-hover:scale-110 group-hover:border-primary',
+                    !isClickable && 'cursor-default'
                   )}
                 >
                   {isCompleted ? (
@@ -118,33 +126,35 @@ export function WizardProgress({
                   ) : (
                     <span className="text-sm font-medium">{stepNumber}</span>
                   )}
-                </div>
+                </button>
 
-                {/* Label */}
-                <div className="text-center">
-                  <div
-                    className={cn(
-                      'text-xs font-medium transition-colors',
-                      isCompleted && 'text-primary',
-                      isActive && 'text-foreground',
-                      !isActive && !isCompleted && 'text-muted-foreground',
-                      isClickable && 'group-hover:text-primary'
-                    )}
-                  >
-                    {step.shortLabel}
-                  </div>
+                {/* Connector line (left half of next step's line) */}
+                <div className="flex-1 flex items-center justify-start">
+                  {!isLast && (
+                    <div
+                      className={cn(
+                        'w-full h-0.5 transition-colors',
+                        isCompleted ? 'bg-primary' : 'bg-muted'
+                      )}
+                    />
+                  )}
                 </div>
-              </button>
+              </div>
 
-              {/* Connector line */}
-              {!isLast && (
+              {/* Label below circle - perfectly centered */}
+              <div className="text-center mt-2 w-full px-1">
                 <div
                   className={cn(
-                    'flex-1 h-0.5 mx-2 transition-colors',
-                    isCompleted ? 'bg-primary' : 'bg-muted'
+                    'text-xs font-medium transition-colors',
+                    isCompleted && 'text-primary',
+                    isActive && 'text-foreground',
+                    !isActive && !isCompleted && 'text-muted-foreground',
+                    isClickable && 'hover:text-primary'
                   )}
-                />
-              )}
+                >
+                  {step.shortLabel}
+                </div>
+              </div>
             </div>
           );
         })}

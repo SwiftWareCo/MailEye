@@ -62,8 +62,9 @@ export async function setupDNSAction(domainId: string): Promise<DNSSetupResult> 
     };
   }
 
+  console.log('user server metadata', user.serverMetadata);
   // Get Cloudflare credentials
-  const cloudflareApiToken = user.serverMetadata?.cloudflareApiToken as string | undefined;
+  const cloudflareApiToken = user.serverMetadata?.cloudflare.apiToken as string | undefined;
   if (!cloudflareApiToken || !domain.cloudflareZoneId) {
     return {
       success: false,

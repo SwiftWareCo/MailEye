@@ -32,11 +32,15 @@ import { useSetupWizard } from '@/lib/hooks/use-setup-wizard';
 import { WizardProgress } from './WizardProgress';
 import { WizardNavigation } from './WizardNavigation';
 import { DomainConnectionStep } from './DomainConnectionStep';
+import { NameserverVerificationStep } from './NameserverVerificationStep';
+import { DNSConfigurationStep } from './DNSConfigurationStep';
+import { DNSStatusMonitor } from './DNSStatusMonitor';
 import type { DomainConnectionInput, DomainConnectionResult } from '@/lib/types/domain';
 import type { NameserverVerificationResult } from '@/server/domain/nameserver-verifier';
 import type { DNSSetupResult } from '@/server/dns/dns-manager';
 import type { EmailAccountResult } from '@/lib/types/email';
 import type { SmartleadConnectionResult } from '@/lib/types/smartlead';
+import type { PollingSession } from '@/server/dns/polling-job';
 
 interface SetupWizardProps {
   // User context
@@ -50,6 +54,9 @@ interface SetupWizardProps {
   connectDomainAction: (input: DomainConnectionInput) => Promise<DomainConnectionResult>;
   verifyNameserversAction: (domainId: string) => Promise<NameserverVerificationResult>;
   setupDNSAction: (domainId: string) => Promise<DNSSetupResult>;
+  startPollingAction: (
+    domainId: string
+  ) => Promise<{ success: boolean; data?: PollingSession; error?: string }>;
   createEmailAccountAction: (params: {
     domainId: string;
     username: string;
@@ -64,8 +71,9 @@ export function SetupWizard({
   triggerLabel = 'Start Setup Wizard',
   triggerVariant = 'default',
   connectDomainAction,
-  // verifyNameserversAction,
-  // setupDNSAction,
+  verifyNameserversAction,
+  setupDNSAction,
+  startPollingAction,
   // createEmailAccountAction,
   // connectToSmartleadAction,
 }: SetupWizardProps) {
@@ -142,77 +150,57 @@ export function SetupWizard({
 
       case 2:
         return (
-          <div className="space-y-4 py-6">
-            <h3 className="text-lg font-semibold">Step 2: Nameserver Verification</h3>
-            <p className="text-sm text-muted-foreground">
-              Update your nameservers and we&apos;ll verify they point to Cloudflare.
-            </p>
-            <div className="bg-muted/50 p-4 rounded-md">
-              <p className="text-sm">Nameserver verification UI will go here...</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                This is a placeholder. Component to be implemented in Task 7.3
-              </p>
-            </div>
-            <Button
-              onClick={() => {
-                updateWizardData({ nameserversVerified: true });
-                goToNextStep();
-              }}
-            >
-              Simulate Verification
-            </Button>
-          </div>
+          <NameserverVerificationStep
+            domainId={wizardData.domainId || ''}
+            domain={wizardData.domain || ''}
+            verifyNameserversAction={verifyNameserversAction}
+            onVerified={() => {
+              // Update wizard state and advance
+              updateWizardData({ nameserversVerified: true });
+              goToNextStep();
+            }}
+            onSkip={() => {
+              // Allow advanced users to skip verification
+              updateWizardData({ nameserversVerified: false, skippedVerification: true });
+              goToNextStep();
+            }}
+          />
         );
 
       case 3:
         return (
-          <div className="space-y-4 py-6">
-            <h3 className="text-lg font-semibold">Step 3: DNS Configuration</h3>
-            <p className="text-sm text-muted-foreground">
-              We&apos;ll configure SPF, DKIM, DMARC, and MX records for your domain.
-            </p>
-            <div className="bg-muted/50 p-4 rounded-md">
-              <p className="text-sm">DNS configuration UI will go here...</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                This is a placeholder. Component to be implemented in Task 7.4
-              </p>
-            </div>
-            <Button
-              onClick={() => {
-                updateWizardData({
-                  dnsConfigured: true,
-                  pollingSessionId: 'demo-session-id',
-                });
-                goToNextStep();
-              }}
-            >
-              Simulate DNS Setup
-            </Button>
-          </div>
+          <DNSConfigurationStep
+            domainId={wizardData.domainId || ''}
+            domain={wizardData.domain || ''}
+            setupDNSAction={setupDNSAction}
+            startPollingAction={startPollingAction}
+            onSuccess={(pollingSessionId) => {
+              // Update wizard state with polling session ID
+              updateWizardData({
+                dnsConfigured: true,
+                pollingSessionId,
+              });
+              // Auto-advance to DNS monitoring step
+              goToNextStep();
+            }}
+            onError={(error) => {
+              console.error('DNS setup error:', error);
+            }}
+          />
         );
 
       case 4:
         return (
-          <div className="space-y-4 py-6">
-            <h3 className="text-lg font-semibold">Step 4: DNS Propagation Monitoring</h3>
-            <p className="text-sm text-muted-foreground">
-              Monitoring DNS propagation status across global servers...
-            </p>
-            <div className="bg-muted/50 p-4 rounded-md">
-              <p className="text-sm">DNS status monitor will go here...</p>
-              <p className="text-xs text-muted-foreground mt-2">
-                This is a placeholder. Component to be implemented in Task 7.5
-              </p>
-            </div>
-            <Button
-              onClick={() => {
-                updateWizardData({ dnsFullyPropagated: true });
-                goToNextStep();
-              }}
-            >
-              Simulate Propagation Complete
-            </Button>
-          </div>
+          <DNSStatusMonitor
+            pollingSessionId={wizardData.pollingSessionId || ''}
+            domain={wizardData.domain || ''}
+            onComplete={() => {
+              // Update wizard state and advance to email provisioning
+              updateWizardData({ dnsFullyPropagated: true });
+              goToNextStep();
+            }}
+            showDetails={true}
+          />
         );
 
       case 5:
@@ -310,7 +298,7 @@ export function SetupWizard({
           </Button>
         </DialogTrigger>
 
-        <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-5xl! max-h-[95vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Email Infrastructure Setup Wizard</DialogTitle>
             <DialogDescription>
