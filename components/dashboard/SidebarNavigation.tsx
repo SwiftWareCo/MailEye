@@ -19,8 +19,8 @@ interface NavigationItem {
 
 export const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Domains", href: "/dashboard/domains", icon: Globe },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  { name: "Domains", href: "/domains", icon: Globe },
+  { name: "Settings", href: "/settings", icon: Settings },
 ]
 
 export function SidebarNavigation() {

@@ -1,40 +1,25 @@
 /**
- * Setup Wizard Component
+ * Setup Wizard Component (Full-Page)
  *
  * Main wizard container that orchestrates the email infrastructure setup flow
+ * Now renders as a full page instead of a dialog modal
  * Handles step routing, state management, and navigation
  */
 
 'use client';
 
-import { useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import { Wand2 } from 'lucide-react';
 import { useSetupWizard } from '@/lib/hooks/use-setup-wizard';
 import { WizardProgress } from './WizardProgress';
 import { WizardNavigation } from './WizardNavigation';
+import { CloudflareCredentialsStep } from './CloudflareCredentialsStep';
+import { GoogleWorkspaceCredentialsStep } from './GoogleWorkspaceCredentialsStep';
+import { SmartleadCredentialsStep } from './SmartleadCredentialsStep';
 import { DomainConnectionStep } from './DomainConnectionStep';
 import { NameserverVerificationStep } from './NameserverVerificationStep';
 import { DNSConfigurationStep } from './DNSConfigurationStep';
 import { DNSStatusMonitor } from './DNSStatusMonitor';
+import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 import type { DomainConnectionInput, DomainConnectionResult } from '@/lib/types/domain';
 import type { NameserverVerificationResult } from '@/server/domain/nameserver-verifier';
 import type { DNSSetupResult } from '@/server/dns/dns-manager';
@@ -46,98 +31,140 @@ interface SetupWizardProps {
   // User context
   userId: string;
 
-  // Trigger button props
-  triggerLabel?: string;
-  triggerVariant?: 'default' | 'outline' | 'secondary';
+  // Credential setup status (to skip already configured steps)
+  credentialStatus: {
+    cloudflare: boolean;
+    googleWorkspace: boolean;
+    smartlead: boolean;
+  };
 
-  // Server Actions (passed from parent page - all required for wizard flow)
+  // Server Actions (passed from parent page)
+  saveCloudflareCredentialsAction: (
+    apiToken: string,
+    accountId: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  saveGoogleWorkspaceCredentialsAction: (
+    serviceAccountEmail: string,
+    privateKey: string,
+    adminEmail: string,
+    customerId?: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  saveSmartleadCredentialsAction: (apiKey: string) => Promise<{ success: boolean; error?: string }>;
   connectDomainAction: (input: DomainConnectionInput) => Promise<DomainConnectionResult>;
   verifyNameserversAction: (domainId: string) => Promise<NameserverVerificationResult>;
   setupDNSAction: (domainId: string) => Promise<DNSSetupResult>;
   startPollingAction: (
     domainId: string
   ) => Promise<{ success: boolean; data?: PollingSession; error?: string }>;
-  createEmailAccountAction: (params: {
+  // TODO: Implement email provisioning and warmup steps
+  createEmailAccountAction?: (params: {
     domainId: string;
     username: string;
     firstName: string;
     lastName: string;
   }) => Promise<EmailAccountResult>;
-  connectToSmartleadAction: (emailAccountId: string) => Promise<SmartleadConnectionResult>;
+  connectToSmartleadAction?: (emailAccountId: string) => Promise<SmartleadConnectionResult>;
 }
 
 export function SetupWizard({
   userId,
-  triggerLabel = 'Start Setup Wizard',
-  triggerVariant = 'default',
+  credentialStatus,
+  saveCloudflareCredentialsAction,
+  saveGoogleWorkspaceCredentialsAction,
+  saveSmartleadCredentialsAction,
   connectDomainAction,
   verifyNameserversAction,
   setupDNSAction,
   startPollingAction,
-  // createEmailAccountAction,
-  // connectToSmartleadAction,
 }: SetupWizardProps) {
-  const [open, setOpen] = useState(false);
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
-  // const [isProcessing, setIsProcessing] = useState(false);
+  const router = useRouter();
+
+  // Calculate initial step based on credential status
+  const getInitialStep = () => {
+    if (!credentialStatus.cloudflare) return 1; // Cloudflare
+    if (!credentialStatus.googleWorkspace) return 2; // Google Workspace
+    if (!credentialStatus.smartlead) return 3; // Smartlead (optional, but show)
+    return 4; // Domain connection (all credentials configured)
+  };
 
   const {
     currentStep,
     wizardData,
-    isComplete,
     steps,
     goToNextStep,
     goToPrevious,
     skipStep,
     goToStep,
-    // resetWizard, // Will be used in future tasks
     updateWizardData,
     getCurrentStep,
     isStepCompleted,
     canGoNext,
     canGoPrevious,
     canSkip,
-  } = useSetupWizard();
-
-  const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen && currentStep > 1 && !isComplete) {
-      // Show confirmation if wizard is in progress
-      setShowCancelDialog(true);
-    } else {
-      setOpen(newOpen);
-    }
-  };
-
-  const handleCancelConfirm = () => {
-    setShowCancelDialog(false);
-    setOpen(false);
-    // Note: We don't reset wizard state - user can resume later
-  };
-
-  const handleClose = () => {
-    setOpen(false);
-  };
+  } = useSetupWizard(getInitialStep(), credentialStatus);
 
   const currentStepInfo = getCurrentStep();
 
   // Render current step content
   const renderStepContent = () => {
-    // Placeholder components for now
-    // These will be replaced with actual step components in tasks 7.2-7.11
     switch (currentStep) {
-      case 1:
+      case 1: // Cloudflare Credentials
+        return (
+          <CloudflareCredentialsStep
+            saveCredentialsAction={saveCloudflareCredentialsAction}
+            onSuccess={() => {
+              updateWizardData({ cloudflareConnected: true });
+              goToNextStep();
+            }}
+            onError={(error) => {
+              console.error('Cloudflare connection error:', error);
+            }}
+          />
+        );
+
+      case 2: // Google Workspace Credentials
+        return (
+          <GoogleWorkspaceCredentialsStep
+            saveCredentialsAction={saveGoogleWorkspaceCredentialsAction}
+            onSuccess={() => {
+              updateWizardData({ googleWorkspaceConnected: true });
+              goToNextStep();
+            }}
+            onError={(error) => {
+              console.error('Google Workspace connection error:', error);
+            }}
+          />
+        );
+
+      case 3: // Smartlead Credentials (Optional)
+        return (
+          <SmartleadCredentialsStep
+            saveCredentialsAction={saveSmartleadCredentialsAction}
+            onSuccess={() => {
+              updateWizardData({ smartleadConnected: true });
+              goToNextStep();
+            }}
+            onSkip={() => {
+              updateWizardData({ smartleadConnected: false });
+              goToNextStep();
+            }}
+            onError={(error) => {
+              console.error('Smartlead connection error:', error);
+            }}
+          />
+        );
+
+      case 4: // Domain Connection
         return (
           <DomainConnectionStep
             userId={userId}
             connectDomainAction={connectDomainAction}
             onSuccess={(domainId, domain, nameserverInstructions) => {
-              // Update wizard state with domain information
               updateWizardData({
                 domainId,
                 domain,
                 provider: nameserverInstructions.provider,
               });
-              // Automatically advance to next step after successful connection
               setTimeout(() => {
                 goToNextStep();
               }, 1000);
@@ -148,26 +175,24 @@ export function SetupWizard({
           />
         );
 
-      case 2:
+      case 5: // Nameserver Verification
         return (
           <NameserverVerificationStep
             domainId={wizardData.domainId || ''}
             domain={wizardData.domain || ''}
             verifyNameserversAction={verifyNameserversAction}
             onVerified={() => {
-              // Update wizard state and advance
               updateWizardData({ nameserversVerified: true });
               goToNextStep();
             }}
             onSkip={() => {
-              // Allow advanced users to skip verification
               updateWizardData({ nameserversVerified: false, skippedVerification: true });
               goToNextStep();
             }}
           />
         );
 
-      case 3:
+      case 6: // DNS Configuration
         return (
           <DNSConfigurationStep
             domainId={wizardData.domainId || ''}
@@ -175,12 +200,10 @@ export function SetupWizard({
             setupDNSAction={setupDNSAction}
             startPollingAction={startPollingAction}
             onSuccess={(pollingSessionId) => {
-              // Update wizard state with polling session ID
               updateWizardData({
                 dnsConfigured: true,
                 pollingSessionId,
               });
-              // Auto-advance to DNS monitoring step
               goToNextStep();
             }}
             onError={(error) => {
@@ -189,13 +212,12 @@ export function SetupWizard({
           />
         );
 
-      case 4:
+      case 7: // DNS Propagation Monitoring
         return (
           <DNSStatusMonitor
             pollingSessionId={wizardData.pollingSessionId || ''}
             domain={wizardData.domain || ''}
             onComplete={() => {
-              // Update wizard state and advance to email provisioning
               updateWizardData({ dnsFullyPropagated: true });
               goToNextStep();
             }}
@@ -203,17 +225,17 @@ export function SetupWizard({
           />
         );
 
-      case 5:
+      case 8: // Email Provisioning
         return (
           <div className="space-y-4 py-6">
-            <h3 className="text-lg font-semibold">Step 5: Email Account Provisioning</h3>
+            <h3 className="text-lg font-semibold">Email Account Provisioning</h3>
             <p className="text-sm text-muted-foreground">
               Create Google Workspace email accounts for your domain.
             </p>
             <div className="bg-muted/50 p-4 rounded-md">
               <p className="text-sm">Email account creation form will go here...</p>
               <p className="text-xs text-muted-foreground mt-2">
-                This is a placeholder. Component to be implemented in Task 7.6
+                Component to be implemented
               </p>
             </div>
             <Button
@@ -224,36 +246,36 @@ export function SetupWizard({
                 goToNextStep();
               }}
             >
-              Simulate Account Creation
+              Continue (Placeholder)
             </Button>
           </div>
         );
 
-      case 6:
+      case 9: // Email Warmup
         return (
           <div className="space-y-4 py-6">
-            <h3 className="text-lg font-semibold">Step 6: Smartlead Integration</h3>
+            <h3 className="text-lg font-semibold">Email Warmup Setup</h3>
             <p className="text-sm text-muted-foreground">
-              Connect your email accounts to Smartlead for cold email campaigns.
+              Connect email accounts to Smartlead for warmup.
             </p>
             <div className="bg-muted/50 p-4 rounded-md">
-              <p className="text-sm">Smartlead connection UI will go here...</p>
+              <p className="text-sm">Warmup configuration UI will go here...</p>
               <p className="text-xs text-muted-foreground mt-2">
-                This is a placeholder. Component to be implemented in Task 7.8
+                Component to be implemented
               </p>
             </div>
             <Button
               onClick={() => {
-                updateWizardData({ smartleadConnected: true });
+                updateWizardData({ warmupConfigured: true });
                 goToNextStep();
               }}
             >
-              Simulate Smartlead Connection
+              Continue (Placeholder)
             </Button>
           </div>
         );
 
-      case 7:
+      case 10: // Setup Complete
         return (
           <div className="space-y-4 py-6">
             <h3 className="text-lg font-semibold">Setup Complete! 🎉</h3>
@@ -263,22 +285,23 @@ export function SetupWizard({
             <div className="bg-primary/10 p-4 rounded-md border border-primary/20">
               <p className="text-sm font-medium">What&apos;s been set up:</p>
               <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                <li>✓ Cloudflare connected</li>
+                <li>✓ Google Workspace connected</li>
+                {wizardData.smartleadConnected && <li>✓ Smartlead connected</li>}
                 <li>✓ Domain connected: {wizardData.domain || 'N/A'}</li>
                 <li>✓ DNS records configured (SPF, DKIM, DMARC, MX)</li>
                 <li>
                   ✓ Email accounts created: {wizardData.emailAccountIds?.length || 0}{' '}
                   accounts
                 </li>
-                {wizardData.smartleadConnected && <li>✓ Connected to Smartlead</li>}
               </ul>
             </div>
-            <div className="bg-muted/50 p-4 rounded-md">
-              <p className="text-xs text-muted-foreground">
-                This is a placeholder. Component to be implemented in Task 7.11
-              </p>
-            </div>
-            <Button onClick={handleClose} className="w-full">
-              Go to Dashboard
+            <Button
+              onClick={() => router.push('/dashboard/domains')}
+              className="w-full"
+              size="lg"
+            >
+              Go to Domains Dashboard
             </Button>
           </div>
         );
@@ -289,73 +312,87 @@ export function SetupWizard({
   };
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogTrigger asChild>
-          <Button variant={triggerVariant}>
-            <Wand2 className="h-4 w-4 mr-2" />
-            {triggerLabel}
-          </Button>
-        </DialogTrigger>
+    <div className="h-full flex items-center justify-center p-8">
+      <div className="w-full max-w-6xl h-full max-h-[90vh]">
+        {/* Floating Card Container with Sidebar Layout */}
+        <div className="bg-card/50 backdrop-blur-lg border rounded-2xl shadow-2xl overflow-hidden h-full flex">
+          {/* Left Sidebar - Steps */}
+          <div className="w-80 border-r bg-card/80 flex flex-col">
+            {/* Sidebar Header */}
+            <div className="px-6 py-6 border-b">
+              <h2 className="text-lg font-semibold">Setup Steps</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Step {currentStep} of {steps.length}
+              </p>
+            </div>
 
-        <DialogContent className="max-w-5xl! max-h-[95vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Email Infrastructure Setup Wizard</DialogTitle>
-            <DialogDescription>
-              {currentStepInfo.description} (Step {currentStep} of {steps.length})
-            </DialogDescription>
-          </DialogHeader>
+            {/* Progress Steps - Scrollable */}
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <WizardProgress
+                steps={steps}
+                currentStep={currentStep}
+                isStepCompleted={isStepCompleted}
+                onStepClick={goToStep}
+                variant="vertical"
+              />
+            </div>
 
-          {/* Progress Indicator */}
-          <div className="py-4 border-b border-border">
-            <WizardProgress
-              steps={steps}
-              currentStep={currentStep}
-              isStepCompleted={isStepCompleted}
-              onStepClick={goToStep}
-              variant="horizontal"
-            />
+            {/* Navigation Buttons - Fixed at bottom */}
+            {currentStep < 10 && (
+              <div className="px-4 py-4 border-t space-y-2">
+                {/* Next Button */}
+                {canGoNext() && (
+                  <Button
+                    onClick={goToNextStep}
+                    disabled={!canGoNext()}
+                    className="w-full"
+                  >
+                    Next
+                  </Button>
+                )}
+
+                {/* Skip Button */}
+                {canSkip() && (
+                  <Button
+                    onClick={skipStep}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Skip
+                  </Button>
+                )}
+
+                {/* Previous Button */}
+                {canGoPrevious() && (
+                  <Button
+                    onClick={goToPrevious}
+                    variant="ghost"
+                    className="w-full"
+                  >
+                    Previous
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Step Content (scrollable) */}
-          <div className="flex-1 overflow-y-auto px-1">
-            {renderStepContent()}
+          {/* Right Content Area - Scrollable */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Content Header */}
+            <div className="px-8 py-6 border-b">
+              <h1 className="text-2xl font-bold">{currentStepInfo.title}</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                {currentStepInfo.description}
+              </p>
+            </div>
+
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto px-8 py-8">
+              {renderStepContent()}
+            </div>
           </div>
-
-          {/* Navigation */}
-          {currentStep < 7 && (
-            <WizardNavigation
-              onPrevious={canGoPrevious() ? goToPrevious : undefined}
-              onNext={canGoNext() ? goToNextStep : undefined}
-              onSkip={canSkip() ? skipStep : undefined}
-              onCancel={() => setShowCancelDialog(true)}
-              canGoPrevious={canGoPrevious()}
-              canGoNext={canGoNext()}
-              canSkip={canSkip()}
-              isNextLoading={false}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Cancel Confirmation Dialog */}
-      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Setup Wizard?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your progress has been saved. You can resume the setup wizard later from where you
-              left off.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Continue Setup</AlertDialogCancel>
-            <AlertDialogAction onClick={handleCancelConfirm}>
-              Exit Wizard
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+        </div>
+      </div>
+    </div>
   );
 }

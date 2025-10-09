@@ -153,7 +153,7 @@ export async function generateGoogleWorkspaceDKIM(
 export async function generateDKIMRecord(
   config: DKIMGenerationConfig
 ): Promise<DKIMGenerationResult> {
-  const { domain, provider, selector, keyLength = 2048 } = config;
+  const { domain, provider, selector, keyLength = 2048, publicKey } = config;
 
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -181,6 +181,16 @@ export async function generateDKIMRecord(
       warnings: [],
       generatedAt: new Date(),
     };
+  }
+
+  // If user provided a public key, use it
+  if (publicKey && publicKey.trim()) {
+    console.log('[DKIM] Using user-provided public key for', domain);
+    return await generateGoogleWorkspaceDKIM(domain, publicKey.trim(), {
+      selector,
+      keyLength,
+      splitForDNSLimit: config.splitForDNSLimit ?? true,
+    });
   }
 
   // Check if user has Google Workspace credentials configured
@@ -224,8 +234,8 @@ export async function generateDKIMRecord(
     console.error('Error checking Google Workspace credentials:', error);
   }
 
-  // Note: In a real implementation, this would integrate with Google Workspace Admin SDK
-  // to generate or retrieve the DKIM public key. For now, this returns an instructional result.
+  // DKIM key cannot be generated programmatically - must be manually generated in Google Admin Console
+  // Return informational result with instructions
   return {
     success: false,
     domain,
@@ -238,15 +248,17 @@ export async function generateDKIMRecord(
     requiresSplitting: false,
     characterCount: 0,
     errors: [
-      'DKIM key generation requires Google Workspace Admin SDK integration. ' +
-      'Please generate the DKIM key in Google Workspace Admin Console and provide the public key.'
+      'DKIM must be generated manually in Google Workspace Admin Console. ' +
+      'After generating, paste the public key in the form above to create the DNS record.'
     ],
     warnings: [
-      'To generate DKIM in Google Workspace: ' +
-      '1. Go to admin.google.com > Apps > Google Workspace > Gmail > Authenticate email ' +
-      '2. Select your domain and click "Generate new record" ' +
-      '3. Choose 2048-bit key length ' +
-      '4. Copy the generated public key'
+      'Manual DKIM Setup Instructions:',
+      '1. Ensure Gmail has been enabled for your domain in Google Workspace for 24-72 hours',
+      '2. Go to admin.google.com > Apps > Google Workspace > Gmail > Authenticate email',
+      '3. Select your domain and click "Generate new record"',
+      '4. Choose 2048-bit key length (recommended)',
+      '5. Copy the generated public key (starts with "v=DKIM1...")',
+      '6. Paste it in the "DKIM Public Key" field above and retry DNS setup'
     ],
     generatedAt: new Date(),
   };

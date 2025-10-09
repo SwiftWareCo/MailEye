@@ -142,3 +142,135 @@ export async function getGoogleWorkspaceUser(email: string) {
 
   return response.data;
 }
+
+/**
+ * Creates an authenticated Google Admin SDK client with custom credentials
+ */
+export function getGoogleAdminClientWithCredentials(config: GoogleWorkspaceConfig) {
+  // Handle escaped newlines in private key (common when stored in JSON/databases)
+  const privateKey = config.privateKey.replace(/\\n/g, '\n');
+
+  const auth = new google.auth.JWT({
+    email: config.serviceAccountEmail,
+    key: privateKey,
+    scopes: [
+      'https://www.googleapis.com/auth/admin.directory.user',
+      'https://www.googleapis.com/auth/admin.directory.user.security',
+      'https://www.googleapis.com/auth/admin.directory.domain',
+      'https://www.googleapis.com/auth/siteverification', // For domain verification
+    ],
+    subject: config.adminEmail,
+  });
+
+  return google.admin({ version: 'directory_v1', auth });
+}
+
+/**
+ * Adds a domain to Google Workspace
+ * Requires domain-wide delegation with admin.directory.domain scope
+ *
+ * @param domain - Domain name to add (e.g., "example.com")
+ * @param config - Google Workspace configuration
+ * @returns Domain object from Google API
+ */
+export async function addDomainToGoogleWorkspace(
+  domain: string,
+  config: GoogleWorkspaceConfig
+) {
+  const admin = getGoogleAdminClientWithCredentials(config);
+  const customerId = config.customerId || 'my_customer';
+
+  try {
+    const response = await admin.domains.insert({
+      customer: customerId,
+      requestBody: {
+        domainName: domain,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error('Error adding domain to Google Workspace:', error);
+    throw error;
+  }
+}
+
+/**
+ * Removes a domain from Google Workspace
+ *
+ * @param domain - Domain name to remove
+ * @param config - Google Workspace configuration
+ */
+export async function removeDomainFromGoogleWorkspace(
+  domain: string,
+  config: GoogleWorkspaceConfig
+) {
+  const admin = getGoogleAdminClientWithCredentials(config);
+  const customerId = config.customerId || 'my_customer';
+
+  try {
+    await admin.domains.delete({
+      customer: customerId,
+      domainName: domain,
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error removing domain from Google Workspace:', error);
+    throw error;
+  }
+}
+
+/**
+ * Gets domain information from Google Workspace
+ *
+ * @param domain - Domain name to check
+ * @param config - Google Workspace configuration
+ * @returns Domain object or null if not found
+ */
+export async function getGoogleWorkspaceDomain(
+  domain: string,
+  config: GoogleWorkspaceConfig
+) {
+  const admin = getGoogleAdminClientWithCredentials(config);
+  const customerId = config.customerId || 'my_customer';
+
+  try {
+    const response = await admin.domains.get({
+      customer: customerId,
+      domainName: domain,
+    });
+
+    return response.data;
+  } catch (error) {
+    // If domain not found, return null
+    if ((error as { code?: number }).code === 404) {
+      return null;
+    }
+
+    console.error('Error getting domain from Google Workspace:', error);
+    throw error;
+  }
+}
+
+/**
+ * Lists all domains in Google Workspace
+ *
+ * @param config - Google Workspace configuration
+ * @returns Array of domain objects
+ */
+export async function listGoogleWorkspaceDomains(config: GoogleWorkspaceConfig) {
+  const admin = getGoogleAdminClientWithCredentials(config);
+  const customerId = config.customerId || 'my_customer';
+
+  try {
+    const response = await admin.domains.list({
+      customer: customerId,
+    });
+
+    return response.data.domains || [];
+  } catch (error) {
+    console.error('Error listing domains from Google Workspace:', error);
+    throw error;
+  }
+}

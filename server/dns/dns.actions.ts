@@ -14,8 +14,16 @@ import { getDomainById } from '../domain/domain.data';
  * Setup DNS Action
  *
  * Configures SPF, DKIM, DMARC, MX, and tracking domain DNS records
+ *
+ * @param domainId - Domain ID to configure DNS for
+ * @param options - Optional DNS configuration options
  */
-export async function setupDNSAction(domainId: string): Promise<DNSSetupResult> {
+export async function setupDNSAction(
+  domainId: string,
+  options?: {
+    dkimPublicKey?: string; // Optional: User-provided DKIM public key from Google Admin Console
+  }
+): Promise<DNSSetupResult> {
   // Authenticate user
   const user = await stackServerApp.getUser();
   if (!user) {
@@ -62,7 +70,6 @@ export async function setupDNSAction(domainId: string): Promise<DNSSetupResult> 
     };
   }
 
-  console.log('user server metadata', user.serverMetadata);
   // Get Cloudflare credentials
   const cloudflareApiToken = user.serverMetadata?.cloudflare.apiToken as string | undefined;
   if (!cloudflareApiToken || !domain.cloudflareZoneId) {
@@ -93,6 +100,7 @@ export async function setupDNSAction(domainId: string): Promise<DNSSetupResult> 
     zoneId: domain.cloudflareZoneId,
     apiToken: cloudflareApiToken,
     emailPlatform: 'google-workspace',
+    dkimPublicKey: options?.dkimPublicKey, // Pass user-provided DKIM key if available
     dmarcPolicy: 'none',
     dmarcReportEmail: `dmarc@${domain.domain}`,
     enableTracking: true,

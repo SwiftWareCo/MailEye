@@ -181,10 +181,16 @@ export async function checkDomainDuplicate(
 /**
  * Complete domain validation (format + duplicate check)
  * Use this for form validation before domain connection
+ *
+ * @param domain - Domain name to validate
+ * @param userId - User ID to check ownership
+ * @param options - Optional configuration
+ * @param options.allowExisting - If true, allows domain to exist for current user (for wizard resumption)
  */
 export async function validateDomain(
   domain: string,
-  userId: string
+  userId: string,
+  options?: { allowExisting?: boolean }
 ): Promise<DomainValidationResult> {
   // First validate format
   const formatValidation = validateDomainFormat(domain);
@@ -201,6 +207,11 @@ export async function validateDomain(
     );
 
     if (duplicateCheck.isDuplicate) {
+      // If allowExisting is true and domain belongs to current user, allow it
+      if (options?.allowExisting && duplicateCheck.existingDomain) {
+        return formatValidation; // Valid - resuming setup for existing domain
+      }
+
       return {
         isValid: false,
         sanitizedDomain: formatValidation.sanitizedDomain,

@@ -28,6 +28,14 @@ export const domains = pgTable("domains", {
   healthScore: varchar("health_score", { length: 20 }).default("unknown"), // 'excellent', 'good', 'warning', 'critical', 'unknown'
   lastHealthCheckAt: timestamp("last_health_check_at", { withTimezone: true }),
 
+  // Google Workspace integration
+  googleWorkspaceStatus: varchar("google_workspace_status", { length: 30 }), // 'pending_verification', 'verified', 'verification_failed', null if not added
+  googleWorkspaceVerificationToken: text("google_workspace_verification_token"), // Verification token from Site Verification API (google-site-verification=...)
+  googleWorkspaceVerificationMethod: varchar("google_workspace_verification_method", { length: 20 }), // 'DNS_TXT'
+  googleWorkspaceVerificationRecordId: varchar("google_workspace_verification_record_id", { length: 255 }), // Cloudflare DNS record ID for the verification TXT record
+  googleWorkspaceAddedAt: timestamp("google_workspace_added_at", { withTimezone: true }),
+  googleWorkspaceVerifiedAt: timestamp("google_workspace_verified_at", { withTimezone: true }),
+
   // Metadata
   notes: text("notes"),
   metadata: jsonb("metadata"), // Additional provider-specific data

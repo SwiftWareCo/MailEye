@@ -8,34 +8,17 @@
 'use client';
 
 import { DomainList } from './DomainList';
-import { SetupWizard } from '@/components/setup/SetupWizard';
+import { Button } from '@/components/ui/button';
 import { useDomains } from '@/lib/hooks/use-domains';
-import type { Domain, DomainConnectionInput, DomainConnectionResult } from '@/lib/types/domain';
+import { useRouter } from 'next/navigation';
+import type { Domain } from '@/lib/types/domain';
 import type { NameserverVerificationResult } from '@/server/domain/nameserver-verifier';
-import type { DNSSetupResult } from '@/server/dns/dns-manager';
-import type { EmailAccountResult } from '@/lib/types/email';
-import type { SmartleadConnectionResult } from '@/lib/types/smartlead';
-import type { PollingSession } from '@/server/dns/polling-job';
 
 interface DomainsContentProps {
   userId: string;
   initialDomains: Domain[];
   deleteDomainAction: (domainId: string) => Promise<{ success: boolean; error?: string }>;
   verifyNameserversAction: (domainId: string) => Promise<NameserverVerificationResult>;
-
-  // Wizard Server Actions (all required for end-to-end setup)
-  connectDomainAction: (input: DomainConnectionInput) => Promise<DomainConnectionResult>;
-  setupDNSAction: (domainId: string) => Promise<DNSSetupResult>;
-  startPollingAction: (
-    domainId: string
-  ) => Promise<{ success: boolean; data?: PollingSession; error?: string }>;
-  createEmailAccountAction: (params: {
-    domainId: string;
-    username: string;
-    firstName: string;
-    lastName: string;
-  }) => Promise<EmailAccountResult>;
-  connectToSmartleadAction: (emailAccountId: string) => Promise<SmartleadConnectionResult>;
 }
 
 export function DomainsContent({
@@ -43,12 +26,9 @@ export function DomainsContent({
   initialDomains,
   deleteDomainAction,
   verifyNameserversAction,
-  connectDomainAction,
-  setupDNSAction,
-  startPollingAction,
-  createEmailAccountAction,
-  connectToSmartleadAction,
 }: DomainsContentProps) {
+  const router = useRouter();
+
   // Use TanStack Query for reactive state management
   const { data: domains } = useDomains(initialDomains, userId);
 
@@ -82,17 +62,12 @@ export function DomainsContent({
             )}
           </p>
         </div>
-        <SetupWizard
-          userId={userId}
-          triggerLabel={totalDomains > 0 ? 'Setup New Domain' : 'Start Setup Wizard'}
-          triggerVariant="default"
-          connectDomainAction={connectDomainAction}
-          verifyNameserversAction={verifyNameserversAction}
-          setupDNSAction={setupDNSAction}
-          startPollingAction={startPollingAction}
-          createEmailAccountAction={createEmailAccountAction}
-          connectToSmartleadAction={connectToSmartleadAction}
-        />
+        <Button
+          onClick={() => router.push('/setup')}
+          variant="default"
+        >
+          {totalDomains > 0 ? 'Setup New Domain' : 'Start Setup Wizard'}
+        </Button>
       </div>
 
       {/* Domain list */}

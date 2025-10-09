@@ -68,6 +68,7 @@ export interface Domain {
 
   createdAt: Date;
   updatedAt: Date;
+  googleWorkspaceStatus: string | null;
 }
 
 /**
@@ -110,6 +111,7 @@ export interface DomainConnectionResult {
   nameserverInstructions?: NameserverInstructions;
   error?: string;
   validationErrors?: string[];
+  isResuming?: boolean; // Flag indicating setup is being resumed for existing domain
 }
 
 /**

@@ -7,13 +7,13 @@
 
 'use server';
 
-import { connectDomain } from './domain-orchestrator';
+import { connectOrResumeDomain } from './domain-orchestrator';
 import {
   verifyDomainNameservers,
   checkNameserversOnly,
   type NameserverVerificationResult,
 } from './nameserver-verifier';
-import { getUserCloudflareCredentials } from '../cloudflare/cloudflare.actions';
+import { getCloudflareCredentials } from '../credentials/credentials.data';
 import { db } from '@/lib/db';
 import { domains } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
@@ -35,7 +35,7 @@ export async function connectDomainAction(
 ): Promise<DomainConnectionResult> {
   try {
     // Get user's Cloudflare credentials from session
-    const cloudflareCredentials = await getUserCloudflareCredentials();
+    const cloudflareCredentials = await getCloudflareCredentials();
 
     if (!cloudflareCredentials) {
       return {
@@ -44,8 +44,8 @@ export async function connectDomainAction(
       };
     }
 
-    // Call orchestrator to handle domain connection
-    const result = await connectDomain(input, userId, cloudflareCredentials);
+    // Call orchestrator to handle domain connection or resumption
+    const result = await connectOrResumeDomain(input, userId, cloudflareCredentials);
     return result;
   } catch (error) {
     console.error('Error in connectDomainAction:', error);
@@ -58,7 +58,7 @@ export async function connectDomainAction(
 
 /**
  * Server Action: Delete a domain
- * Deletes both the database record AND the Cloudflare zone
+ * Deletes database record, Cloudflare zone, and removes from Google Workspace
  *
  * @param userId - User ID (bound from Server Component)
  * @param domainId - Domain ID to delete
@@ -85,7 +85,7 @@ export async function deleteDomainAction(
     // If domain has a Cloudflare zone, delete it first
     if (domain.cloudflareZoneId) {
       try {
-        const cloudflareCredentials = await getUserCloudflareCredentials();
+        const cloudflareCredentials = await getCloudflareCredentials();
 
         if (cloudflareCredentials) {
           const { deleteZone } = await import('@/lib/clients/cloudflare');
@@ -98,6 +98,21 @@ export async function deleteDomainAction(
         console.error('Error deleting Cloudflare zone:', error);
         // Continue with database deletion even if Cloudflare deletion fails
         // This prevents orphaned DB records if zone was already deleted manually
+      }
+    }
+
+    // If domain was added to Google Workspace, remove it
+    if (domain.googleWorkspaceStatus) {
+      try {
+        const { removeDomainFromGoogleWorkspaceAction } = await import(
+          '../google-workspace/domain-management.actions'
+        );
+
+        await removeDomainFromGoogleWorkspaceAction(domain.domain);
+        console.log(`[Domain] Removed ${domain.domain} from Google Workspace`);
+      } catch (error) {
+        console.error('Error removing domain from Google Workspace:', error);
+        // Continue with database deletion even if Google Workspace deletion fails
       }
     }
 

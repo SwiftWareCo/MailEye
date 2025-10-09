@@ -196,38 +196,28 @@ export async function setupEmailDNS(
     errors.push(...(spfResult.errors || []));
   }
 
-  // Step 2: Generate DKIM records
+  // Step 2: Generate DKIM records (OPTIONAL - DNS setup continues without DKIM)
   try {
     const dkimGeneration = await generateDKIMRecordsForPlatform(config);
     dkimResult = dkimGeneration;
 
     if (dkimGeneration.success && dkimGeneration.records) {
       allRecords.push(...dkimGeneration.records);
+      // Add success message for DKIM
+      warnings.push('DKIM records created successfully');
     } else {
-      // Check if error is due to missing Google Workspace credentials
-      const isGoogleWorkspaceError = dkimGeneration.errors?.some(
-        (error) =>
-          error.includes('Google Workspace not connected') ||
-          error.includes('Google Workspace credentials')
+      // DKIM is optional - treat all errors as warnings, don't block DNS setup
+      warnings.push(
+        'DKIM record skipped. DNS setup will continue without DKIM authentication.'
       );
 
-      if (isGoogleWorkspaceError) {
-        // Treat as warning instead of error - DNS setup can continue without DKIM
-        warnings.push(
-          'DKIM record skipped: Google Workspace credentials not configured. ' +
-          'You can add DKIM records manually later after configuring Google Workspace.'
-        );
-        warnings.push(...(dkimGeneration.errors || []));
-        warnings.push(...(dkimGeneration.warnings || []));
-      } else {
-        // Other DKIM errors are still treated as errors
-        errors.push(...(dkimGeneration.errors || []));
+      // Add DKIM errors and warnings as informational warnings
+      if (dkimGeneration.errors && dkimGeneration.errors.length > 0) {
+        warnings.push(...dkimGeneration.errors);
+      }
+      if (dkimGeneration.warnings && dkimGeneration.warnings.length > 0) {
         warnings.push(...(dkimGeneration.warnings || []));
       }
-    }
-
-    if (dkimGeneration.success || dkimGeneration.warnings) {
-      warnings.push(...(dkimGeneration.warnings || []));
     }
   } catch (error) {
     console.error('Error generating DKIM records:', error);
@@ -239,13 +229,9 @@ export async function setupEmailDNS(
         `DKIM generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       ],
     };
-    // Treat unexpected errors as warnings too if Google Workspace is involved
-    const errorMessage = error instanceof Error ? error.message : '';
-    if (errorMessage.includes('Google Workspace')) {
-      warnings.push(...(dkimResult.errors || []));
-    } else {
-      errors.push(...(dkimResult.errors || []));
-    }
+    // Treat all DKIM errors as warnings - don't block DNS setup
+    warnings.push('DKIM record skipped due to error. DNS setup will continue.');
+    warnings.push(...(dkimResult.errors || []));
   }
 
   // Step 3: Generate DMARC record
@@ -455,7 +441,7 @@ async function generateSPFRecord(
 async function generateDKIMRecordsForPlatform(
   config: DNSSetupConfig
 ): Promise<DNSRecordSetupResult> {
-  const { domain, emailPlatform, dkimSelector } = config;
+  const { domain, emailPlatform, dkimSelector, dkimPublicKey } = config;
 
   try {
     if (emailPlatform === 'google-workspace') {
@@ -463,6 +449,7 @@ async function generateDKIMRecordsForPlatform(
         domain,
         provider: 'google_workspace',
         selector: dkimSelector || 'google',
+        publicKey: dkimPublicKey, // Pass user-provided public key if available
       });
 
       if (!dkimResult.success) {

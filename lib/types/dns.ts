@@ -201,6 +201,7 @@ export interface DKIMGenerationConfig {
   selector?: string;            // Default: "google" for GWS, "selector1" for M365
   keyLength?: DKIMKeyLength;    // Default: 2048
   splitForDNSLimit?: boolean;   // Split long keys for 255-char DNS limit (default: true)
+  publicKey?: string;           // Optional: User-provided DKIM public key from Google Admin Console
 }
 
 /**

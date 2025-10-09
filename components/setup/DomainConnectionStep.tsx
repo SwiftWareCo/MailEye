@@ -92,6 +92,13 @@ export function DomainConnectionStep({
   const showInstructions = result?.success && result.nameserverInstructions && result.domain;
 
   if (showInstructions) {
+    // Determine if this is a resumed setup
+    const isResuming = result.isResuming;
+    const title = isResuming ? 'Resuming Domain Setup' : 'Domain Connected Successfully!';
+    const subtitle = isResuming
+      ? 'Continuing setup for existing domain'
+      : 'Now update your nameservers to complete setup';
+
     // Success state - show nameserver instructions
     return (
       <div className="space-y-6 py-6">
@@ -100,9 +107,9 @@ export function DomainConnectionStep({
             <CheckCircle2 className="h-6 w-6 text-green-500" />
           </div>
           <div>
-            <h3 className="text-xl font-semibold">Domain Connected Successfully!</h3>
+            <h3 className="text-xl font-semibold">{title}</h3>
             <p className="text-sm text-muted-foreground">
-              Now update your nameservers to complete setup
+              {subtitle}
             </p>
           </div>
         </div>

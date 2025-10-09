@@ -9,27 +9,36 @@
 import { useState, useCallback, useEffect } from 'react';
 
 export interface WizardData {
-  // Step 1: Domain Connection
+  // Step 1: Cloudflare Credentials
+  cloudflareConnected?: boolean;
+
+  // Step 2: Google Workspace Credentials
+  googleWorkspaceConnected?: boolean;
+
+  // Step 3: Smartlead Credentials
+  smartleadConnected?: boolean;
+
+  // Step 4: Domain Connection
   domainId?: string;
   domain?: string;
   provider?: string;
 
-  // Step 2: Nameserver Verification (tracks status)
+  // Step 5: Nameserver Verification
   nameserversVerified?: boolean;
   skippedVerification?: boolean;
 
-  // Step 3: DNS Configuration (tracks status)
-dnsConfigured?: boolean;
+  // Step 6: DNS Configuration
+  dnsConfigured?: boolean;
 
-  // Step 4: DNS Monitoring
+  // Step 7: DNS Monitoring
   pollingSessionId?: string;
   dnsFullyPropagated?: boolean;
 
-  // Step 5: Email Provisioning
+  // Step 8: Email Provisioning
   emailAccountIds?: string[];
 
-  // Step 6: Smartlead Connection
-  smartleadConnected?: boolean;
+  // Step 9: Email Warmup
+  warmupConfigured?: boolean;
 
   // Metadata
   startedAt?: string;
@@ -48,6 +57,30 @@ export interface WizardStep {
 const WIZARD_STEPS: WizardStep[] = [
   {
     id: 1,
+    label: 'Cloudflare Connection',
+    shortLabel: 'Cloudflare',
+    description: 'Connect your Cloudflare account for DNS management',
+    canSkip: false,
+    requiresValidation: true,
+  },
+  {
+    id: 2,
+    label: 'Google Workspace Setup',
+    shortLabel: 'Google',
+    description: 'Connect Google Workspace for DKIM and email accounts',
+    canSkip: false,
+    requiresValidation: true,
+  },
+  {
+    id: 3,
+    label: 'Smartlead Setup',
+    shortLabel: 'Smartlead',
+    description: 'Connect Smartlead for email warmup (optional)',
+    canSkip: true,
+    requiresValidation: false,
+  },
+  {
+    id: 4,
     label: 'Domain Connection',
     shortLabel: 'Domain',
     description: 'Connect your domain and create Cloudflare zone',
@@ -55,7 +88,7 @@ const WIZARD_STEPS: WizardStep[] = [
     requiresValidation: true,
   },
   {
-    id: 2,
+    id: 5,
     label: 'Nameserver Verification',
     shortLabel: 'Nameservers',
     description: 'Verify nameservers point to Cloudflare',
@@ -63,7 +96,7 @@ const WIZARD_STEPS: WizardStep[] = [
     requiresValidation: true,
   },
   {
-    id: 3,
+    id: 6,
     label: 'DNS Configuration',
     shortLabel: 'DNS Setup',
     description: 'Configure SPF, DKIM, DMARC, and MX records',
@@ -71,7 +104,7 @@ const WIZARD_STEPS: WizardStep[] = [
     requiresValidation: true,
   },
   {
-    id: 4,
+    id: 7,
     label: 'DNS Propagation',
     shortLabel: 'Monitoring',
     description: 'Monitor DNS propagation status',
@@ -79,7 +112,7 @@ const WIZARD_STEPS: WizardStep[] = [
     requiresValidation: false,
   },
   {
-    id: 5,
+    id: 8,
     label: 'Email Provisioning',
     shortLabel: 'Email',
     description: 'Create Google Workspace email accounts',
@@ -87,15 +120,15 @@ const WIZARD_STEPS: WizardStep[] = [
     requiresValidation: true,
   },
   {
-    id: 6,
-    label: 'Smartlead Integration',
-    shortLabel: 'Smartlead',
-    description: 'Connect email accounts to Smartlead',
+    id: 9,
+    label: 'Email Warmup',
+    shortLabel: 'Warmup',
+    description: 'Connect email accounts to Smartlead warmup',
     canSkip: true,
     requiresValidation: false,
   },
   {
-    id: 7,
+    id: 10,
     label: 'Setup Complete',
     shortLabel: 'Complete',
     description: 'Review and finish setup',
@@ -106,8 +139,15 @@ const WIZARD_STEPS: WizardStep[] = [
 
 const STORAGE_KEY = 'setup-wizard-state';
 
-export function useSetupWizard() {
-  const [currentStep, setCurrentStep] = useState<number>(1);
+export function useSetupWizard(
+  initialStep: number = 1,
+  _credentialStatus?: {
+    cloudflare: boolean;
+    googleWorkspace: boolean;
+    smartlead: boolean;
+  }
+) {
+  const [currentStep, setCurrentStep] = useState<number>(initialStep);
   const [wizardData, setWizardData] = useState<WizardData>({});
   const [isComplete, setIsComplete] = useState(false);
 
@@ -117,14 +157,20 @@ export function useSetupWizard() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setCurrentStep(parsed.currentStep || 1);
+        // Only restore if we don't have an explicit initial step (i.e., using default)
+        if (initialStep === 1) {
+          setCurrentStep(parsed.currentStep || initialStep);
+        } else {
+          // Use provided initial step (credential-aware)
+          setCurrentStep(initialStep);
+        }
         setWizardData(parsed.wizardData || {});
         setIsComplete(parsed.isComplete || false);
       } catch (error) {
         console.error('Failed to parse wizard state:', error);
       }
     }
-  }, []);
+  }, [initialStep]);
 
   // Persist state on changes
   useEffect(() => {
@@ -151,17 +197,23 @@ export function useSetupWizard() {
     if (!step.requiresValidation) return true;
 
     switch (currentStep) {
-      case 1: // Domain Connection
-        return !!wizardData.domainId;
-      case 2: // Nameserver Verification
-        return !!wizardData.nameserversVerified || !!wizardData.skippedVerification;
-      case 3: // DNS Configuration
-        return !!wizardData.dnsConfigured && !!wizardData.pollingSessionId;
-      case 4: // DNS Monitoring
+      case 1: // Cloudflare Connection
+        return !!wizardData.cloudflareConnected;
+      case 2: // Google Workspace Setup
+        return !!wizardData.googleWorkspaceConnected;
+      case 3: // Smartlead Setup
         return true; // Can skip
-      case 5: // Email Provisioning
+      case 4: // Domain Connection
+        return !!wizardData.domainId;
+      case 5: // Nameserver Verification
+        return !!wizardData.nameserversVerified || !!wizardData.skippedVerification;
+      case 6: // DNS Configuration
+        return !!wizardData.dnsConfigured && !!wizardData.pollingSessionId;
+      case 7: // DNS Monitoring
+        return true; // Can skip
+      case 8: // Email Provisioning
         return !!wizardData.emailAccountIds && wizardData.emailAccountIds.length > 0;
-      case 6: // Smartlead Connection
+      case 9: // Email Warmup
         return true; // Can skip
       default:
         return true;

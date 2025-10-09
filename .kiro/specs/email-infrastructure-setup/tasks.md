@@ -553,7 +553,7 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Dependencies**: 7.3, 3.10
   - **Note**: This step calls `setupEmailDNS()` which creates all DNS records via Cloudflare API and starts the polling session for Step 4
 
-- [ ] **7.4** DNS Status Monitor Component
+- [x] **7.4** DNS Status Monitor Component
   - **Description**: Create real-time DNS propagation status display with 30-second polling
   - **Deliverables**:
     - `components/setup/DNSStatusMonitor.tsx` - Status monitor UI
@@ -563,7 +563,7 @@ This document breaks down the implementation of the Email Infrastructure Setup T
   - **Estimated Effort**: 3 hours
   - **Dependencies**: 7.1, 4.5
 
-- [ ] **7.5** TanStack Query Integration for DNS Polling
+- [x] **7.5** TanStack Query Integration for DNS Polling
   - **Description**: Integrate TanStack Query for real-time DNS status polling (30-second refetch)
   - **Deliverables**:
     - `lib/queries/dns-status.ts` - TanStack Query hooks

@@ -49,6 +49,26 @@ export async function getDomainById(
 }
 
 /**
+ * Get a single domain by domain name (with user ownership check)
+ */
+export async function getDomainByName(
+  domainName: string,
+  userId: string
+): Promise<Domain | null> {
+  try {
+    const domain = await db.query.domains.findFirst({
+      where: (domains, { eq, and }) =>
+        and(eq(domains.domain, domainName), eq(domains.userId, userId)),
+    });
+
+    return domain || null;
+  } catch (error) {
+    console.error('Error fetching domain by name:', error);
+    throw new Error('Failed to fetch domain');
+  }
+}
+
+/**
  * Get domain statistics for a user
  */
 export async function getDomainStats(userId: string): Promise<{
