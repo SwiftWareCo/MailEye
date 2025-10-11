@@ -24,6 +24,10 @@ import {
   CheckCircle2,
   Clock,
   Lock,
+  LayoutDashboard,
+  Globe,
+  Mail,
+  Flame,
 } from 'lucide-react';
 import { OverviewTab } from './tabs/OverviewTab';
 import { DNSTab } from './tabs/DnsTab';
@@ -44,7 +48,11 @@ interface DomainDetailViewProps {
     hostname: string,
     value: string
   ) => Promise<{ success: boolean; error?: string; recordId?: string }>;
-  onCreateEmailAccount?: () => void;
+  onCreateEmailAccount?: (
+    emailPrefix: string,
+    displayName: string,
+    count?: number
+  ) => Promise<{ success: boolean; error?: string; accounts?: unknown[] }>;
   onConnectToSmartlead?: (emailAccountId: string) => void;
 }
 
@@ -293,68 +301,76 @@ export function DomainDetailView({
 
       {/* Tabs */}
       <Card>
-        <CardHeader className='border-b'>
-          <Tabs value={activeTab} onValueChange={handleNavigateToTab}>
+        <Tabs value={activeTab} onValueChange={handleNavigateToTab}>
+          <CardHeader className='border-b'>
             <TabsList className='w-full justify-start'>
               <TooltipProvider>
                 <TabsTrigger value='overview'>
+                  <LayoutDashboard className='h-4 w-4 mr-2' />
                   Overview
                   {setupStatus.overview.isComplete &&
                     renderTabBadge('overview')}
                 </TabsTrigger>
 
                 <TabsTrigger value='dns'>
+                  <Globe className='h-4 w-4 mr-2' />
                   DNS & Nameservers
                   {renderTabBadge('dns')}
                 </TabsTrigger>
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger
-                      value='email'
-                      disabled={isTabLocked('email')}
-                      className='relative'
-                    >
-                      Email Accounts
-                      {isTabLocked('email') && (
+                {isTabLocked('email') ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <TabsTrigger
+                        value='email'
+                        disabled={true}
+                        className='relative'
+                      >
+                        <Mail className='h-4 w-4 mr-2' />
+                        Email Accounts
                         <Lock className='h-3 w-3 ml-1 text-muted-foreground' />
-                      )}
-                      {!isTabLocked('email') && renderTabBadge('email')}
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  {isTabLocked('email') && (
+                      </TabsTrigger>
+                    </TooltipTrigger>
                     <TooltipContent>
                       <p>{getLockedReason('email')}</p>
                     </TooltipContent>
-                  )}
-                </Tooltip>
+                  </Tooltip>
+                ) : (
+                  <TabsTrigger value='email'>
+                    <Mail className='h-4 w-4 mr-2' />
+                    Email Accounts
+                    {renderTabBadge('email')}
+                  </TabsTrigger>
+                )}
 
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger
-                      value='warmup'
-                      disabled={isTabLocked('warmup')}
-                      className='relative'
-                    >
-                      Warmup & Integration
-                      {isTabLocked('warmup') && (
+                {isTabLocked('warmup') ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <TabsTrigger
+                        value='warmup'
+                        disabled={true}
+                        className='relative'
+                      >
+                        <Flame className='h-4 w-4 mr-2' />
+                        Warmup & Integration
                         <Lock className='h-3 w-3 ml-1 text-muted-foreground' />
-                      )}
-                      {!isTabLocked('warmup') && renderTabBadge('warmup')}
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  {isTabLocked('warmup') && (
+                      </TabsTrigger>
+                    </TooltipTrigger>
                     <TooltipContent>
                       <p>{getLockedReason('warmup')}</p>
                     </TooltipContent>
-                  )}
-                </Tooltip>
+                  </Tooltip>
+                ) : (
+                  <TabsTrigger value='warmup'>
+                    <Flame className='h-4 w-4 mr-2' />
+                    Warmup & Integration
+                    {renderTabBadge('warmup')}
+                  </TabsTrigger>
+                )}
               </TooltipProvider>
             </TabsList>
-          </Tabs>
-        </CardHeader>
-        <CardContent className='p-6'>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          </CardHeader>
+          <CardContent className='p-6'>
             <TabsContent value='overview'>
               <OverviewTab
                 details={details}
@@ -384,8 +400,8 @@ export function DomainDetailView({
                 onNavigateToTab={handleNavigateToTab}
               />
             </TabsContent>
-          </Tabs>
-        </CardContent>
+          </CardContent>
+        </Tabs>
       </Card>
     </div>
   );

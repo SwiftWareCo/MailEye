@@ -15,6 +15,7 @@ import {
 import { confirmManualVerificationAction } from '@/server/google-workspace/google-workspace.actions';
 import { connectToSmartleadAction } from '@/server/smartlead/smartlead.actions';
 import { addDKIMRecordDomainAction } from '@/server/domain/domain.actions';
+import { createEmailAccountAction } from '@/server/email/email.actions';
 
 interface DomainDetailPageProps {
   params: Promise<{
@@ -74,10 +75,45 @@ export default async function DomainDetailPage({
           value
         );
       }}
-      onCreateEmailAccount={async () => {
+      onCreateEmailAccount={async (
+        emailPrefix: string,
+        displayName: string,
+        count?: number
+      ) => {
         'use server';
-        // TODO: Implement email account creation modal/form
-        // For now, this is a placeholder that will need a form
+
+        // Parse firstName and lastName from displayName
+        const nameParts = displayName.trim().split(' ');
+        const firstName = nameParts[0] || emailPrefix;
+        const lastName = nameParts.slice(1).join(' ') || emailPrefix;
+
+        // For now, only support single account creation
+        // Batch creation would require using batchCreateEmailAccountsAction
+        if (count && count > 1) {
+          return {
+            success: false,
+            error: 'Batch creation not yet implemented',
+          };
+        }
+
+        const result = await createEmailAccountAction({
+          domainId,
+          username: emailPrefix,
+          firstName,
+          lastName,
+        });
+
+        if (!result.success) {
+          return {
+            success: false,
+            error: result.error?.message || 'Failed to create email account',
+          };
+        }
+
+        return {
+          success: true,
+          accounts: [result],
+        };
       }}
       onConnectToSmartlead={async (emailAccountId: string) => {
         'use server';
