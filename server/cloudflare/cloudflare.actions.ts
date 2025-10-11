@@ -264,26 +264,32 @@ export async function syncCloudflareZonesToDatabase(
       };
     }
 
-    // Insert new domains for each zone
+    // Insert new domains for each zone (skip duplicates to avoid race condition)
     const newDomains = await db
       .insert(domains)
       .values(
-        zonesToSync.map((zone: Zone) => ({
-          userId,
-          domain: zone.name,
-          provider: 'cloudflare' as const,
-          cloudflareZoneId: zone.id,
-          assignedNameservers: zone.name_servers || [],
-          verificationStatus: zone.status === 'active' ? 'verified' : 'pending_nameservers',
-          isActive: true,
-          healthScore: 'unknown' as const,
-          metadata: {
-            syncedFromCloudflare: true,
-            syncedAt: new Date().toISOString(),
-            cloudflareStatus: zone.status,
-          },
-        }))
+        zonesToSync.map((zone: Zone) => {
+          const isActive = zone.status === 'active';
+          return {
+            userId,
+            domain: zone.name,
+            provider: 'cloudflare' as const,
+            cloudflareZoneId: zone.id,
+            assignedNameservers: zone.name_servers || [],
+            verificationStatus: isActive ? 'verified' : 'pending_nameservers',
+            nameserversVerified: isActive, // Set nameserversVerified based on zone status
+            lastVerifiedAt: isActive ? new Date() : null,
+            isActive: true,
+            healthScore: 'unknown' as const,
+            metadata: {
+              syncedFromCloudflare: true,
+              syncedAt: new Date().toISOString(),
+              cloudflareStatus: zone.status,
+            },
+          };
+        })
       )
+      .onConflictDoNothing() // Skip if domain already exists (handles race condition)
       .returning();
 
     console.log(`[Cloudflare] Synced ${newDomains.length} zones to database for user ${userId}`);

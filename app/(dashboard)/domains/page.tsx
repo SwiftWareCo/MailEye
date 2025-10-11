@@ -12,8 +12,9 @@ import { DomainsContent } from '@/components/domains/DomainsContent';
 import {
   deleteDomainAction,
   verifyNameserversAction,
+  connectDomainAction,
 } from '@/server/domain/domain.actions';
-import { getCloudflareCredentials } from '@/server/credentials/credentials.data';
+import { getCredentialSetupStatus } from '@/server/credentials/credentials.data';
 import {
   syncCloudflareZonesToDatabase,
 } from '@/server/cloudflare/cloudflare.actions';
@@ -31,16 +32,13 @@ export default async function DomainsPage() {
     redirect('/onboarding');
   }
 
-  // Check if user has connected Cloudflare
-  const cloudflareCredentials = await getCloudflareCredentials();
+  // Get credential setup status
+  const credentialStatus = await getCredentialSetupStatus();
 
-  // If no Cloudflare credentials, redirect to setup wizard
-  if (!cloudflareCredentials) {
-    redirect('/setup');
+  // Sync existing Cloudflare zones to database if Cloudflare is connected
+  if (credentialStatus.cloudflare) {
+    await syncCloudflareZonesToDatabase(user.id);
   }
-
-  // Sync existing Cloudflare zones to database (if any)
-  await syncCloudflareZonesToDatabase(user.id);
 
   // Fetch user's domains from database (now includes synced zones)
   const domains = await getUserDomains(user.id);
@@ -48,13 +46,16 @@ export default async function DomainsPage() {
   // Bind userId to Server Actions (Next.js best practice)
   const boundDeleteDomain = deleteDomainAction.bind(null, user.id);
   const boundVerifyNameservers = verifyNameserversAction.bind(null, user.id);
+  const boundConnectDomain = connectDomainAction.bind(null, user.id);
 
   return (
     <DomainsContent
       userId={user.id}
       initialDomains={domains}
+      credentialStatus={credentialStatus}
       deleteDomainAction={boundDeleteDomain}
       verifyNameserversAction={boundVerifyNameservers}
+      connectDomainAction={boundConnectDomain}
     />
   );
 }

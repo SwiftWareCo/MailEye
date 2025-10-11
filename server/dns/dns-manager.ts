@@ -24,9 +24,11 @@
  */
 
 import { flattenSPFRecord } from './spf-flattener';
-import { generateDKIMRecord } from './dkim-generator';
 import { generateDMARCRecord } from './dmarc-generator';
-import { generateGoogleWorkspaceMXRecord, createMXDNSRecords } from './mx-generator';
+import {
+  generateGoogleWorkspaceMXRecord,
+  createMXDNSRecords,
+} from './mx-generator';
 import { generateTrackingDomainCNAME } from './tracking-domain-setup';
 import {
   createDNSRecordsBatch,
@@ -109,7 +111,6 @@ export interface DNSSetupResult {
 
   // Individual component results
   spf?: DNSRecordSetupResult;
-  dkim?: DNSRecordSetupResult;
   dmarc?: DNSRecordSetupResult;
   mx?: DNSRecordSetupResult;
   tracking?: DNSRecordSetupResult;
@@ -127,12 +128,11 @@ export interface DNSSetupResult {
  *
  * This is the main orchestrator function that:
  * 1. Generates SPF record (flattened if needed)
- * 2. Generates DKIM records for email platform
- * 3. Generates DMARC record with policy
- * 4. Generates MX records for email platform
- * 5. Generates tracking domain CNAME (if enabled)
- * 6. Batch creates all records in Cloudflare
- * 7. Saves records to database
+ * 2. Generates DMARC record with policy
+ * 3. Generates MX records for email platform
+ * 4. Generates tracking domain CNAME (if enabled)
+ * 5. Batch creates all records in Cloudflare
+ * 6. Saves records to database
  *
  * @param config - DNS setup configuration
  * @returns Complete DNS setup result
@@ -153,20 +153,13 @@ export interface DNSSetupResult {
 export async function setupEmailDNS(
   config: DNSSetupConfig
 ): Promise<DNSSetupResult> {
-  const {
-    domain,
-    domainId,
-    zoneId,
-    apiToken,
-    skipDuplicates = true,
-  } = config;
+  const { domain, domainId, zoneId, apiToken, skipDuplicates = true } = config;
 
   const errors: string[] = [];
   const warnings: string[] = [];
   const allRecords: DNSRecordInput[] = [];
 
   let spfResult: DNSRecordSetupResult | undefined;
-  let dkimResult: DNSRecordSetupResult | undefined;
   let dmarcResult: DNSRecordSetupResult | undefined;
   let mxResult: DNSRecordSetupResult | undefined;
   let trackingResult: DNSRecordSetupResult | undefined;
@@ -190,62 +183,39 @@ export async function setupEmailDNS(
       success: false,
       recordsCreated: 0,
       errors: [
-        `SPF generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `SPF generation failed: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
       ],
     };
     errors.push(...(spfResult.errors || []));
   }
 
-  // Step 2: Generate DKIM records (OPTIONAL - DNS setup continues without DKIM)
+  // Step 2: Generate DMARC record (only if 48+ hours since DNS setup)
   try {
-    const dkimGeneration = await generateDKIMRecordsForPlatform(config);
-    dkimResult = dkimGeneration;
+    // Check if we should generate DMARC
+    const shouldGenerateDmarc = await shouldGenerateDMARC(config.domainId);
 
-    if (dkimGeneration.success && dkimGeneration.records) {
-      allRecords.push(...dkimGeneration.records);
-      // Add success message for DKIM
-      warnings.push('DKIM records created successfully');
-    } else {
-      // DKIM is optional - treat all errors as warnings, don't block DNS setup
-      warnings.push(
-        'DKIM record skipped. DNS setup will continue without DKIM authentication.'
-      );
+    if (shouldGenerateDmarc) {
+      const dmarcGeneration = await generateDMARCRecordForDomain(config);
+      dmarcResult = dmarcGeneration;
 
-      // Add DKIM errors and warnings as informational warnings
-      if (dkimGeneration.errors && dkimGeneration.errors.length > 0) {
-        warnings.push(...dkimGeneration.errors);
+      if (dmarcGeneration.success && dmarcGeneration.records) {
+        allRecords.push(...dmarcGeneration.records);
+      } else {
+        errors.push(...(dmarcGeneration.errors || []));
       }
-      if (dkimGeneration.warnings && dkimGeneration.warnings.length > 0) {
-        warnings.push(...(dkimGeneration.warnings || []));
-      }
-    }
-  } catch (error) {
-    console.error('Error generating DKIM records:', error);
-    dkimResult = {
-      type: 'DKIM',
-      success: false,
-      recordsCreated: 0,
-      errors: [
-        `DKIM generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      ],
-    };
-    // Treat all DKIM errors as warnings - don't block DNS setup
-    warnings.push('DKIM record skipped due to error. DNS setup will continue.');
-    warnings.push(...(dkimResult.errors || []));
-  }
 
-  // Step 3: Generate DMARC record
-  try {
-    const dmarcGeneration = await generateDMARCRecordForDomain(config);
-    dmarcResult = dmarcGeneration;
-
-    if (dmarcGeneration.success && dmarcGeneration.records) {
-      allRecords.push(...dmarcGeneration.records);
+      warnings.push(...(dmarcGeneration.warnings || []));
     } else {
-      errors.push(...(dmarcGeneration.errors || []));
+      // DMARC will be generated later (48h delay)
+      dmarcResult = {
+        type: 'DMARC',
+        success: true, // Not an error, just delayed
+        recordsCreated: 0,
+        warnings: ['DMARC will be configured automatically after 48 hours'],
+      };
     }
-
-    warnings.push(...(dmarcGeneration.warnings || []));
   } catch (error) {
     console.error('Error generating DMARC record:', error);
     dmarcResult = {
@@ -253,13 +223,15 @@ export async function setupEmailDNS(
       success: false,
       recordsCreated: 0,
       errors: [
-        `DMARC generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `DMARC generation failed: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
       ],
     };
     errors.push(...(dmarcResult.errors || []));
   }
 
-  // Step 4: Generate MX records
+  // Step 3: Generate MX records
   try {
     const mxGeneration = await generateMXRecordsForPlatform(config);
     mxResult = mxGeneration;
@@ -278,14 +250,20 @@ export async function setupEmailDNS(
       success: false,
       recordsCreated: 0,
       errors: [
-        `MX generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `MX generation failed: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
       ],
     };
     errors.push(...(mxResult.errors || []));
   }
 
-  // Step 5: Generate tracking domain CNAME (if enabled)
-  if (config.enableTracking && config.trackingSubdomain && config.trackingProvider) {
+  // Step 4: Generate tracking domain CNAME (if enabled)
+  if (
+    config.enableTracking &&
+    config.trackingSubdomain &&
+    config.trackingProvider
+  ) {
     try {
       const trackingGeneration = await generateTrackingCNAME(config);
       trackingResult = trackingGeneration;
@@ -304,14 +282,16 @@ export async function setupEmailDNS(
         success: false,
         recordsCreated: 0,
         errors: [
-          `Tracking CNAME generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          `Tracking CNAME generation failed: ${
+            error instanceof Error ? error.message : 'Unknown error'
+          }`,
         ],
       };
       errors.push(...(trackingResult.errors || []));
     }
   }
 
-  // Step 6: Batch create all DNS records in Cloudflare and database
+  // Step 5: Batch create all DNS records in Cloudflare and database
   let batchResult: BatchDNSRecordResult;
 
   try {
@@ -335,13 +315,15 @@ export async function setupEmailDNS(
       skippedRecords: 0,
       results: [],
       errors: [
-        `Batch creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Batch creation failed: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
       ],
     };
     errors.push(...batchResult.errors);
   }
 
-  // Step 7: Build final result
+  // Step 6: Build final result
   const result: DNSSetupResult = {
     success: batchResult.success && errors.length === 0,
     domain,
@@ -349,7 +331,6 @@ export async function setupEmailDNS(
     recordsFailed: batchResult.failedRecords,
     recordsSkipped: batchResult.skippedRecords,
     spf: spfResult,
-    dkim: dkimResult,
     dmarc: dmarcResult,
     mx: mxResult,
     tracking: trackingResult,
@@ -400,7 +381,9 @@ async function generateSPFRecord(
       warnings.push(...flattenResult.warnings);
     } else {
       // Build basic SPF record
-      const includeString = allIncludes.map((inc) => `include:${inc}`).join(' ');
+      const includeString = allIncludes
+        .map((inc) => `include:${inc}`)
+        .join(' ');
       spfValue = `v=spf1 ${includeString} ~all`;
     }
 
@@ -429,78 +412,9 @@ async function generateSPFRecord(
       success: false,
       recordsCreated: 0,
       errors: [
-        `SPF generation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      ],
-    };
-  }
-}
-
-/**
- * Generate DKIM records for email platform
- */
-async function generateDKIMRecordsForPlatform(
-  config: DNSSetupConfig
-): Promise<DNSRecordSetupResult> {
-  const { domain, emailPlatform, dkimSelector, dkimPublicKey } = config;
-
-  try {
-    if (emailPlatform === 'google-workspace') {
-      const dkimResult = await generateDKIMRecord({
-        domain,
-        provider: 'google_workspace',
-        selector: dkimSelector || 'google',
-        publicKey: dkimPublicKey, // Pass user-provided public key if available
-      });
-
-      if (!dkimResult.success) {
-        return {
-          type: 'DKIM',
-          success: false,
-          recordsCreated: 0,
-          errors: dkimResult.errors,
-          warnings: dkimResult.warnings,
-        };
-      }
-
-      // Convert DKIM result to DNSRecordInput format
-      const records: DNSRecordInput[] = [{
-        type: 'TXT',
-        name: dkimResult.recordName.split('.')[0], // Extract subdomain part (e.g., "google._domainkey")
-        content: dkimResult.recordValue,
-        ttl: 3600,
-        purpose: 'dkim',
-        metadata: {
-          selector: dkimResult.selector,
-          emailPlatform,
-          keyLength: dkimResult.keyLength,
-          requiresSplitting: dkimResult.requiresSplitting,
-        },
-      }];
-
-      return {
-        type: 'DKIM',
-        success: true,
-        recordsCreated: records.length,
-        records,
-        warnings: dkimResult.warnings,
-      };
-    }
-
-    // For other platforms, skip DKIM generation
-    return {
-      type: 'DKIM',
-      success: true,
-      recordsCreated: 0,
-      records: [],
-      warnings: [`DKIM generation not yet implemented for ${emailPlatform}`],
-    };
-  } catch (error) {
-    return {
-      type: 'DKIM',
-      success: false,
-      recordsCreated: 0,
-      errors: [
-        `DKIM generation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `SPF generation error: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
       ],
     };
   }
@@ -508,8 +422,10 @@ async function generateDKIMRecordsForPlatform(
 
 /**
  * Generate DMARC record for domain
+ *
+ * Exported for use in manual DMARC generation after 48-hour delay
  */
-async function generateDMARCRecordForDomain(
+export async function generateDMARCRecordForDomain(
   config: DNSSetupConfig
 ): Promise<DNSRecordSetupResult> {
   const {
@@ -563,7 +479,9 @@ async function generateDMARCRecordForDomain(
       success: false,
       recordsCreated: 0,
       errors: [
-        `DMARC generation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `DMARC generation error: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
       ],
     };
   }
@@ -647,7 +565,9 @@ async function generateMXRecordsForPlatform(
       success: false,
       recordsCreated: 0,
       errors: [
-        `MX generation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `MX generation error: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
       ],
     };
   }
@@ -713,7 +633,9 @@ async function generateTrackingCNAME(
       success: false,
       recordsCreated: 0,
       errors: [
-        `Tracking CNAME error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        `Tracking CNAME error: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
       ],
     };
   }
@@ -752,7 +674,9 @@ export async function verifyDNSConfiguration(domainId: string): Promise<{
   trackingConfigured: boolean;
   missingRecords: string[];
 }> {
-  const { getDNSRecordsForDomain } = await import('./cloudflare-record-creator');
+  const { getDNSRecordsForDomain } = await import(
+    './cloudflare-record-creator'
+  );
 
   const records = await getDNSRecordsForDomain(domainId);
 
@@ -778,4 +702,30 @@ export async function verifyDNSConfiguration(domainId: string): Promise<{
     trackingConfigured: trackingRecords.length > 0,
     missingRecords,
   };
+}
+
+// Add helper function to check if DMARC should be generated
+async function shouldGenerateDMARC(domainId: string): Promise<boolean> {
+  try {
+    const { db } = await import('@/lib/db');
+    const { domains } = await import('@/lib/db/schema');
+    const { eq } = await import('drizzle-orm');
+
+    const [domain] = await db
+      .select({ dnsConfiguredAt: domains.dnsConfiguredAt })
+      .from(domains)
+      .where(eq(domains.id, domainId))
+      .limit(1);
+
+    if (!domain?.dnsConfiguredAt) {
+      return false; // DNS not configured yet
+    }
+
+    const hoursSinceSetup =
+      (Date.now() - domain.dnsConfiguredAt.getTime()) / (1000 * 60 * 60);
+    return hoursSinceSetup >= 48;
+  } catch (error) {
+    console.error('Error checking DMARC generation timing:', error);
+    return false;
+  }
 }

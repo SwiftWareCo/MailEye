@@ -94,11 +94,12 @@ export async function verifyDomainNameservers(
       };
     }
 
-    // Step 4: Update domain status to verified
+    // Step 4: Update domain status to verified (both fields for consistency)
     const [updatedDomain] = await db
       .update(domains)
       .set({
         verificationStatus: 'verified',
+        nameserversVerified: true, // Set both fields for consistency
         lastVerifiedAt: new Date(),
         updatedAt: new Date(),
         metadata: {

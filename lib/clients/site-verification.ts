@@ -30,8 +30,9 @@ export interface VerificationResult {
 
 /**
  * Creates an authenticated Site Verification API client
+ * Internal helper function used by other exported functions
  */
-export function getSiteVerificationClient(config: GoogleWorkspaceConfig) {
+function getSiteVerificationClient(config: GoogleWorkspaceConfig) {
   // Handle escaped newlines in private key
   const privateKey = config.privateKey.replace(/\\n/g, '\n');
 
@@ -126,6 +127,9 @@ export async function verifyDomain(
 /**
  * Check if domain is already verified
  *
+ * Uses webResource.list() instead of get() to avoid 400 errors when domain
+ * hasn't been verified yet via webResource.insert()
+ *
  * @param domain - Domain to check
  * @param config - Google Workspace configuration
  * @returns true if verified, false otherwise
@@ -137,42 +141,21 @@ export async function isDomainVerified(
   const client = getSiteVerificationClient(config);
 
   try {
-    const response = await client.webResource.get({
-      id: `dns://${domain}/`,
-    });
-
-    return !!response.data.site;
-  } catch (error) {
-    // 404 means not verified
-    if ((error as { code?: number }).code === 404) {
-      return false;
-    }
-
-    console.error('Error checking domain verification status:', error);
-    throw error;
-  }
-}
-
-/**
- * List all verified domains
- *
- * @param config - Google Workspace configuration
- * @returns Array of verified domain identifiers
- */
-export async function listVerifiedDomains(
-  config: GoogleWorkspaceConfig
-): Promise<string[]> {
-  const client = getSiteVerificationClient(config);
-
-  try {
+    // Use list() instead of get() - doesn't throw 400 if domain not verified
     const response = await client.webResource.list();
 
-    return (response.data.items || [])
+    // Check if our domain is in the verified list
+    const verifiedDomains = (response.data.items || [])
       .filter(item => item.site?.type === 'INET_DOMAIN')
-      .map(item => item.site?.identifier || '')
-      .filter(Boolean);
+      .map(item => item.site?.identifier || '');
+
+    // Case-insensitive comparison
+    return verifiedDomains.some(
+      verifiedDomain => verifiedDomain.toLowerCase() === domain.toLowerCase()
+    );
   } catch (error) {
-    console.error('Error listing verified domains:', error);
-    throw error;
+    console.error('Error checking domain verification status:', error);
+    // If list fails, domain is not verified
+    return false;
   }
 }

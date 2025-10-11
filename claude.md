@@ -41,6 +41,27 @@ This project uses an adaptation of Amazon's **Kiro System** for structured featu
 - **Maintain traceability** from requirements to code
 - **Never run npm run dev**: Do not automatically start the development server as part of checking processes
 
+### Application Routes
+
+#### Current Route Structure:
+```
+app/
+├── (auth)/              # Authentication pages (sign-in, sign-up, password reset)
+├── (dashboard)/         # Protected dashboard routes
+│   ├── /dashboard       # Main dashboard
+│   ├── /domains         # Domains management and overview
+│   ├── /domains/[domainId] # Domain detail view with tabbed interface
+│   ├── /setup           # New domain setup wizard (full-page, steps 1-10)
+│   └── /settings        # User settings
+├── /onboarding          # Initial user onboarding
+└── /                    # Landing/home page
+```
+
+**Key Routes:**
+- **`/domains`** - Domains dashboard (view all domains, manage existing)
+- **`/domains/[domainId]`** - Domain detail view with tabbed interface (Overview, DNS, Email Accounts, Warmup)
+- **`/setup`** - Setup wizard for adding new domain (steps 1-10)
+
 ### Project Architecture Guidelines
 
 #### Next.js 15 App Router Best Practices:

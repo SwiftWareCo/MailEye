@@ -189,3 +189,50 @@ export async function getZoneStatus(apiToken: string, zoneId: string): Promise<s
     throw new Error(`Failed to get zone status: ${errorMessage}`);
   }
 }
+
+/**
+ * Deletes all DNS records created by our app (identified by comment field)
+ * Used for resetting Cloudflare Registrar domains that cannot be deleted
+ * @param apiToken - User's Cloudflare API token
+ * @param zoneId - Cloudflare zone ID
+ * @returns Number of records deleted
+ */
+export async function deleteAllAppDNSRecords(apiToken: string, zoneId: string): Promise<number> {
+  try {
+    const allRecords = await listDNSRecords(apiToken, zoneId);
+
+    // Filter records created by our app (check comment field or tags)
+    // We'll identify our records by checking for specific comment patterns
+    const ourRecords = allRecords.filter(record => {
+      // Check if record has a comment indicating it was created by our app
+      // Using type assertion with Record to access comment property safely
+      const recordWithComment = record as unknown as Record<string, unknown>;
+      const comment = (recordWithComment.comment as string) || '';
+      return comment.includes('maileye') ||
+             comment.includes('Created by MailEye') ||
+             // Also check for specific record types we create
+             (record.type === 'TXT' && (
+               (record.content as string).includes('google-site-verification') ||
+               (record.content as string).includes('v=DKIM1')
+             )) ||
+             (record.type === 'CNAME' && (record.content as string).includes('ghs.googlehosted.com'));
+    });
+
+    // Delete each record
+    let deletedCount = 0;
+    for (const record of ourRecords) {
+      try {
+        await deleteDNSRecord(apiToken, zoneId, record.id);
+        deletedCount++;
+      } catch (error) {
+        console.error(`Failed to delete DNS record ${record.id}:`, error);
+        // Continue deleting other records even if one fails
+      }
+    }
+
+    return deletedCount;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
+    throw new Error(`Failed to delete app DNS records: ${errorMessage}`);
+  }
+}

@@ -8,4 +8,3 @@ export * from './schema/spf-dmarc';
 export * from './schema/email-accounts';
 export * from './schema/smartlead';
 export * from './schema/batch-operations';
-export * from './schema/dns-polling';

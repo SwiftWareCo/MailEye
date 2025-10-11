@@ -62,13 +62,21 @@ export interface Domain {
   healthScore?: string | null;
   lastHealthCheckAt?: Date | null;
 
+  dnsConfiguredAt: Date | null;
+
+  // Google Workspace fields
+  googleWorkspaceStatus: string | null;
+  googleWorkspaceManuallyVerified?: boolean | null;
+
+  // Nameserver verification
+  nameserversVerified?: boolean | null;
+
   // Metadata
   notes?: string | null;
   metadata?: unknown; // Drizzle jsonb type returns unknown
 
   createdAt: Date;
   updatedAt: Date;
-  googleWorkspaceStatus: string | null;
 }
 
 /**

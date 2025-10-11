@@ -18,9 +18,6 @@ export const dnsRecords = pgTable("dns_records", {
 
   // Status tracking
   status: varchar("status", { length: 20 }).notNull().default("pending"), // 'pending', 'active', 'failed', 'deleted'
-  lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),
-  propagationStatus: varchar("propagation_status", { length: 20 }).default("unknown"), // 'propagated', 'pending', 'failed', 'unknown'
-  propagationCoverage: integer("propagation_coverage"), // 0-100% - percentage of DNS servers that have propagated this record
 
   // Metadata
   purpose: varchar("purpose", { length: 50 }), // 'email_verification', 'spf', 'dkim', 'dmarc', 'mx', 'custom'

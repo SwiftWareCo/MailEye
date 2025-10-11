@@ -19,6 +19,7 @@ import {
   Globe,
   Calendar,
   FileText,
+  PlayCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ import { DomainStatusBadge } from './DomainStatusBadge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { ViewInstructionsModal } from './ViewInstructionsModal';
 import { useDeleteDomain } from '@/lib/hooks/use-domains';
+import { useRouter } from 'next/navigation';
 import type { Domain } from '@/lib/types/domain';
 import type { NameserverVerificationResult } from '@/server/domain/nameserver-verifier';
 
@@ -47,9 +49,14 @@ export function DomainList({
   deleteDomainAction,
 }: DomainListProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
 
   // Use TanStack Query mutation for delete
   const deleteMutation = useDeleteDomain(userId, deleteDomainAction);
+
+  const handleViewDetails = (domainId: string) => {
+    router.push(`/domains/${domainId}`);
+  };
 
   const filteredDomains = domains.filter((domain) =>
     domain.domain.toLowerCase().includes(searchQuery.toLowerCase())
@@ -159,6 +166,13 @@ export function DomainList({
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleViewDetails(domain.id)}>
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                      View Details
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+
                     <ViewInstructionsModal domain={domain}>
                       <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                         <FileText className="h-4 w-4 mr-2" />

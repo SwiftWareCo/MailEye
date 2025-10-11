@@ -42,15 +42,25 @@ const PROVIDERS: { value: DomainProvider; label: string }[] = [
 interface DomainConnectionModalProps {
   userId: string;
   connectDomainAction: (input: DomainConnectionInput) => Promise<DomainConnectionResult>;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function DomainConnectionModal({ userId, connectDomainAction }: DomainConnectionModalProps) {
-  const [open, setOpen] = useState(false);
+export function DomainConnectionModal({
+  userId,
+  connectDomainAction,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+}: DomainConnectionModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [domain, setDomain] = useState('');
   const [provider, setProvider] = useState<DomainProvider>('other');
   const [notes, setNotes] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
   const [result, setResult] = useState<DomainConnectionResult | null>(null);
+
+  // Use controlled props if provided, otherwise use internal state
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
 
   // Use TanStack Query mutation
   const connectMutation = useConnectDomain(userId, connectDomainAction);
@@ -89,7 +99,11 @@ export function DomainConnectionModal({ userId, connectDomainAction }: DomainCon
   };
 
   const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
+    if (controlledOnOpenChange) {
+      controlledOnOpenChange(newOpen);
+    } else {
+      setInternalOpen(newOpen);
+    }
     // Reset form when closing
     if (!newOpen) {
       handleReset();
@@ -101,12 +115,6 @@ export function DomainConnectionModal({ userId, connectDomainAction }: DomainCon
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Connect Domain
-        </Button>
-      </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         {showInstructions ? (
           // Success state - show nameserver instructions

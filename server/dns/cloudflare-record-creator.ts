@@ -228,7 +228,6 @@ export async function createDNSRecordsBatch(
             ttl: record.ttl || 3600,
             priority: record.priority || null,
             status: 'active',
-            propagationStatus: 'pending',
             purpose: record.purpose || 'custom',
             metadata: {
               cloudflareRecordId,
