@@ -11,6 +11,7 @@ import { DomainDetailView } from '@/components/domains/DomainDetailView';
 import { verifyNameserversAction } from '@/server/domain/domain.actions';
 import {
   setupEmailDNSWithVerificationAction,
+  createDMARCRecordAction,
 } from '@/server/dns/dns.actions';
 import { confirmManualVerificationAction } from '@/server/google-workspace/google-workspace.actions';
 import { connectToSmartleadAction } from '@/server/smartlead/smartlead.actions';
@@ -74,6 +75,10 @@ export default async function DomainDetailPage({
           hostname,
           value
         );
+      }}
+      onCreateDMARCRecord={async () => {
+        'use server';
+        return await createDMARCRecordAction(domainId);
       }}
       onCreateEmailAccount={async (
         emailPrefix: string,

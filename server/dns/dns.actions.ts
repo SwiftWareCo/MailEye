@@ -321,3 +321,141 @@ export async function addDKIMRecordAction(
     };
   }
 }
+
+/**
+ * Create DMARC Record Action
+ *
+ * Creates DMARC record after 48-hour waiting period since DNS configuration.
+ * Returns error if called before 48 hours have elapsed.
+ *
+ * @param domainId - Domain ID to create DMARC for
+ */
+export async function createDMARCRecordAction(
+  domainId: string
+): Promise<{
+  success: boolean;
+  error?: string;
+  recordId?: string;
+  hoursRemaining?: number;
+}> {
+  try {
+    // Authenticate user
+    const user = await stackServerApp.getUser();
+    if (!user) {
+      return { success: false, error: 'Authentication required' };
+    }
+
+    // Get domain
+    const domain = await getDomainById(domainId, user.id);
+    if (!domain) {
+      return { success: false, error: 'Domain not found' };
+    }
+
+    // Check if DNS was configured
+    if (!domain.dnsConfiguredAt) {
+      return {
+        success: false,
+        error: 'DNS has not been configured yet. Please configure DNS first.'
+      };
+    }
+
+    // Calculate hours since DNS configuration
+    const hoursSinceSetup = (Date.now() - domain.dnsConfiguredAt.getTime()) / (1000 * 60 * 60);
+
+    // Check if 48 hours have passed
+    if (hoursSinceSetup < 48) {
+      const hoursRemaining = Math.ceil(48 - hoursSinceSetup);
+      return {
+        success: false,
+        error: `DMARC can only be created 48 hours after DNS configuration. Please wait ${hoursRemaining} more hours.`,
+        hoursRemaining,
+      };
+    }
+
+    // Check if DMARC already exists
+    const { db } = await import('@/lib/db');
+    const { dnsRecords } = await import('@/lib/db/schema');
+    const { eq, and } = await import('drizzle-orm');
+
+    const existingDmarc = await db
+      .select()
+      .from(dnsRecords)
+      .where(
+        and(
+          eq(dnsRecords.domainId, domainId),
+          eq(dnsRecords.purpose, 'dmarc')
+        )
+      )
+      .limit(1);
+
+    if (existingDmarc.length > 0) {
+      return {
+        success: false,
+        error: 'DMARC record already exists for this domain',
+      };
+    }
+
+    if (!domain.cloudflareZoneId) {
+      return { success: false, error: 'Cloudflare zone not configured' };
+    }
+
+    // Get Cloudflare credentials
+    const cloudflareApiToken = user.serverMetadata?.cloudflare.apiToken as
+      | string
+      | undefined;
+    if (!cloudflareApiToken) {
+      return { success: false, error: 'Cloudflare credentials not found' };
+    }
+
+    // Generate DMARC record
+    const { generateDMARCRecordForDomain } = await import('./dns-manager');
+
+    const config: DNSSetupConfig = {
+      domain: domain.domain,
+      domainId: domain.id,
+      zoneId: domain.cloudflareZoneId,
+      apiToken: cloudflareApiToken,
+      emailPlatform: 'google-workspace',
+      dmarcPolicy: 'none',
+      dmarcReportEmail: `dmarc@${domain.domain}`,
+    };
+
+    const dmarcResult = await generateDMARCRecordForDomain(config);
+
+    if (!dmarcResult.success || !dmarcResult.records || dmarcResult.records.length === 0) {
+      return {
+        success: false,
+        error: dmarcResult.errors?.join(', ') || 'Failed to generate DMARC record',
+      };
+    }
+
+    // Create the DMARC record
+    const { createDNSRecordsBatch } = await import('./cloudflare-record-creator');
+
+    const batchResult = await createDNSRecordsBatch({
+      zoneId: domain.cloudflareZoneId,
+      domainId: domain.id,
+      apiToken: cloudflareApiToken,
+      records: dmarcResult.records,
+      skipDuplicates: false,
+    });
+
+    if (!batchResult.success || batchResult.successfulRecords === 0) {
+      return {
+        success: false,
+        error: batchResult.errors.join(', ') || 'Failed to create DMARC record',
+      };
+    }
+
+    return {
+      success: true,
+      recordId: batchResult.results[0]?.databaseRecordId,
+    };
+  } catch (error) {
+    console.error('Error creating DMARC record:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+}

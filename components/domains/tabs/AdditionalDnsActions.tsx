@@ -45,6 +45,12 @@ interface AdditionalDnsActionsProps {
     error?: string;
     recordId?: string;
   }>;
+  onCreateDMARCRecord?: () => Promise<{
+    success: boolean;
+    error?: string;
+    hoursRemaining?: number;
+    recordId?: string;
+  }>;
 }
 
 export function AdditionalDnsActions({
@@ -55,6 +61,7 @@ export function AdditionalDnsActions({
   needsManualVerification,
   onConfirmManualVerification,
   onAddDKIMRecord,
+  onCreateDMARCRecord,
 }: AdditionalDnsActionsProps) {
   const [showAdditionalActions, setShowAdditionalActions] = useState(false);
   const [showDKIMForm, setShowDKIMForm] = useState(false);
@@ -62,6 +69,8 @@ export function AdditionalDnsActions({
   const [dkimValue, setDkimValue] = useState('');
   const [isAddingDKIM, setIsAddingDKIM] = useState(false);
   const [dkimError, setDkimError] = useState<string | null>(null);
+  const [isCreatingDMARC, setIsCreatingDMARC] = useState(false);
+  const [dmarcError, setDmarcError] = useState<string | null>(null);
 
   const handleAddDKIMRecord = async () => {
     if (!onAddDKIMRecord || !dkimHostname.trim() || !dkimValue.trim()) {
@@ -91,6 +100,35 @@ export function AdditionalDnsActions({
       setIsAddingDKIM(false);
     }
   };
+
+  const handleCreateDMARCRecord = async () => {
+    if (!onCreateDMARCRecord) {
+      return;
+    }
+
+    setIsCreatingDMARC(true);
+    setDmarcError(null);
+
+    try {
+      const result = await onCreateDMARCRecord();
+
+      if (result.success) {
+        window.location.reload();
+      } else {
+        setDmarcError(result.error || 'Failed to create DMARC record');
+      }
+    } catch {
+      setDmarcError('An unexpected error occurred');
+    } finally {
+      setIsCreatingDMARC(false);
+    }
+  };
+
+  // Calculate if DMARC is ready (48+ hours after DNS setup)
+  const dmarcReadyToCreate =
+    !dmarcConfigured &&
+    domain.dnsConfiguredAt &&
+    ((Date.now() - new Date(domain.dnsConfiguredAt).getTime()) / (1000 * 60 * 60)) >= 48;
 
   return (
     <Card className='border-muted bg-card'>
@@ -258,6 +296,11 @@ export function AdditionalDnsActions({
                         <CheckCircle2 className='h-3 w-3 mr-1' />
                         Configured
                       </Badge>
+                    ) : dmarcReadyToCreate ? (
+                      <Badge variant='default' className='text-xs bg-green-600 hover:bg-green-700'>
+                        <CheckCircle2 className='h-3 w-3 mr-1' />
+                        Ready
+                      </Badge>
                     ) : dmarcPending ? (
                       <Badge variant='secondary' className='text-xs'>
                         <Clock className='h-3 w-3 mr-1' />
@@ -270,18 +313,45 @@ export function AdditionalDnsActions({
                     )}
                   </div>
 
-                  <p className='text-sm text-muted-foreground'>
+                  <p className='text-sm text-muted-foreground mb-2'>
                     {dmarcConfigured
                       ? 'DMARC is configured and protecting your domain from email spoofing.'
+                      : dmarcReadyToCreate
+                      ? 'DMARC is ready to be configured. Click the button below to create the record.'
                       : dmarcPending
-                      ? `DMARC will be configured automatically in ${Math.ceil(
+                      ? `DMARC will be available in ${Math.ceil(
                           48 -
                             (Date.now() -
                               new Date(domain.dnsConfiguredAt!).getTime()) /
                               (1000 * 60 * 60)
-                        )} hours.`
-                      : 'DMARC enhances email security and will be configured after DNS setup.'}
+                        )} hours. This waiting period ensures SPF and DKIM are properly propagated.`
+                      : 'DMARC enhances email security and will be available 48 hours after DNS setup.'}
                   </p>
+
+                  {dmarcReadyToCreate && onCreateDMARCRecord && (
+                    <Button
+                      size='sm'
+                      onClick={handleCreateDMARCRecord}
+                      disabled={isCreatingDMARC}
+                      className='bg-purple-600 hover:bg-purple-700 text-white'
+                    >
+                      {isCreatingDMARC ? (
+                        <>
+                          <Loader2 className='h-3 w-3 mr-2 animate-spin' />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <Shield className='h-3 w-3 mr-2' />
+                          Create DMARC Now
+                        </>
+                      )}
+                    </Button>
+                  )}
+
+                  {dmarcError && (
+                    <p className='text-xs text-red-400 mt-2'>{dmarcError}</p>
+                  )}
 
                   {dmarcConfigured && (
                     <div className='mt-2 p-2 bg-purple-950/30 rounded text-xs border border-purple-900/30'>

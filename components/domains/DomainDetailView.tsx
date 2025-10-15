@@ -48,6 +48,12 @@ interface DomainDetailViewProps {
     hostname: string,
     value: string
   ) => Promise<{ success: boolean; error?: string; recordId?: string }>;
+  onCreateDMARCRecord?: () => Promise<{
+    success: boolean;
+    error?: string;
+    hoursRemaining?: number;
+    recordId?: string;
+  }>;
   onCreateEmailAccount?: (
     emailPrefix: string,
     displayName: string,
@@ -62,6 +68,7 @@ export function DomainDetailView({
   onConfigureEmailDNS,
   onConfirmManualVerification,
   onAddDKIMRecord,
+  onCreateDMARCRecord,
   onCreateEmailAccount,
   onConnectToSmartlead,
 }: DomainDetailViewProps) {
@@ -384,6 +391,7 @@ export function DomainDetailView({
                 onConfigureEmailDNS={onConfigureEmailDNS}
                 onConfirmManualVerification={onConfirmManualVerification}
                 onAddDKIMRecord={onAddDKIMRecord}
+                onCreateDMARCRecord={onCreateDMARCRecord}
               />
             </TabsContent>
             <TabsContent value='email'>

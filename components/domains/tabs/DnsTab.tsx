@@ -62,6 +62,12 @@ interface DNSTabProps {
     error?: string;
     recordId?: string;
   }>;
+  onCreateDMARCRecord?: () => Promise<{
+    success: boolean;
+    error?: string;
+    hoursRemaining?: number;
+    recordId?: string;
+  }>;
 }
 
 export function DNSTab({
@@ -70,6 +76,7 @@ export function DNSTab({
   onConfigureEmailDNS,
   onConfirmManualVerification,
   onAddDKIMRecord,
+  onCreateDMARCRecord,
 }: DNSTabProps) {
   const router = useRouter();
   const { domain, dnsRecordsByType, setupStatus } = details;
@@ -367,6 +374,7 @@ export function DNSTab({
           }
           onConfirmManualVerification={() => setShowManualVerificationModal(true)}
           onAddDKIMRecord={onAddDKIMRecord}
+          onCreateDMARCRecord={onCreateDMARCRecord}
         />
       )}
       {/* DNS Records */}
