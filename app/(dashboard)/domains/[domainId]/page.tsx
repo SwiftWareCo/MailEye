@@ -16,7 +16,7 @@ import {
 import { confirmManualVerificationAction } from '@/server/google-workspace/google-workspace.actions';
 import { connectToSmartleadAction } from '@/server/smartlead/smartlead.actions';
 import { addDKIMRecordDomainAction } from '@/server/domain/domain.actions';
-import { createEmailAccountAction } from '@/server/email/email.actions';
+import { createEmailAccountAction, batchCreateEmailAccountsAction } from '@/server/email/email.actions';
 
 interface DomainDetailPageProps {
   params: Promise<{
@@ -83,23 +83,72 @@ export default async function DomainDetailPage({
       onCreateEmailAccount={async (
         emailPrefix: string,
         displayName: string,
-        count?: number
+        count?: number,
+        customAccounts?: Array<{ username: string; displayName: string }>
       ) => {
         'use server';
 
-        // Parse firstName and lastName from displayName
+        // Custom accounts mode
+        if (customAccounts && customAccounts.length > 0) {
+          const batchResult = await batchCreateEmailAccountsAction({
+            domainId,
+            emailPrefix: '',
+            displayNamePrefix: '',
+            count: customAccounts.length,
+            customAccounts,
+          });
+
+          if (!batchResult.success) {
+            return {
+              success: false,
+              error:
+                batchResult.results[0]?.error ||
+                'Failed to create email accounts',
+            };
+          }
+
+          return {
+            success: true,
+            accounts: batchResult.results.map((r) => ({
+              success: r.success,
+              email: r.email,
+              error: r.error,
+            })),
+          };
+        }
+
+        // Batch creation with prefix
+        if (count && count > 1) {
+          const batchResult = await batchCreateEmailAccountsAction({
+            domainId,
+            emailPrefix,
+            displayNamePrefix: displayName,
+            count,
+          });
+
+          if (!batchResult.success) {
+            return {
+              success: false,
+              error:
+                batchResult.results[0]?.error ||
+                'Failed to create email accounts',
+            };
+          }
+
+          return {
+            success: true,
+            accounts: batchResult.results.map((r) => ({
+              success: r.success,
+              email: r.email,
+              error: r.error,
+            })),
+          };
+        }
+
+        // Single account creation
         const nameParts = displayName.trim().split(' ');
         const firstName = nameParts[0] || emailPrefix;
         const lastName = nameParts.slice(1).join(' ') || emailPrefix;
-
-        // For now, only support single account creation
-        // Batch creation would require using batchCreateEmailAccountsAction
-        if (count && count > 1) {
-          return {
-            success: false,
-            error: 'Batch creation not yet implemented',
-          };
-        }
 
         const result = await createEmailAccountAction({
           domainId,

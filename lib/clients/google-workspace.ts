@@ -67,9 +67,12 @@ export async function createGoogleWorkspaceUser(
     firstName: string;
     lastName: string;
     password: string;
-  }
+  },
+  config?: GoogleWorkspaceConfig
 ) {
-  const admin = getGoogleAdminClient();
+  const admin = config
+    ? getGoogleAdminClientWithCredentials(config)
+    : getGoogleAdminClient();
 
   const response = await admin.users.insert({
     requestBody: {
@@ -133,8 +136,13 @@ export async function updateUserPassword(email: string, newPassword: string) {
 /**
  * Gets Google Workspace user information
  */
-export async function getGoogleWorkspaceUser(email: string) {
-  const admin = getGoogleAdminClient();
+export async function getGoogleWorkspaceUser(
+  email: string,
+  config?: GoogleWorkspaceConfig
+) {
+  const admin = config
+    ? getGoogleAdminClientWithCredentials(config)
+    : getGoogleAdminClient();
 
   const response = await admin.users.get({
     userKey: email,

@@ -2,7 +2,15 @@ import { pgTable, uuid, varchar, timestamp, text, integer, boolean, jsonb, index
 import { domains } from "./domains";
 
 /**
- * SPF records table
+ * DEPRECATED: These tables are no longer used.
+ * All DNS records (SPF, DKIM, DMARC) are stored in dns_records table.
+ * See docs/database-architecture.md for details.
+ *
+ * These exports remain for backward compatibility but tables should be dropped.
+ */
+
+/**
+ * SPF records table (DEPRECATED - use dns_records instead)
  * Stores SPF configurations with flattening support
  */
 export const spfRecords = pgTable("spf_records", {
@@ -36,7 +44,7 @@ export const spfRecords = pgTable("spf_records", {
 ]);
 
 /**
- * DMARC records table
+ * DMARC records table (DEPRECATED - use dns_records instead)
  * Stores DMARC policies and reporting configuration
  */
 export const dmarcRecords = pgTable("dmarc_records", {
@@ -75,7 +83,7 @@ export const dmarcRecords = pgTable("dmarc_records", {
 ]);
 
 /**
- * DKIM records table
+ * DKIM records table (DEPRECATED - use dns_records instead)
  * Stores DKIM selectors and public keys
  */
 export const dkimRecords = pgTable("dkim_records", {

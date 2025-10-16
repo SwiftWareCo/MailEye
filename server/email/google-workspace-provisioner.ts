@@ -17,6 +17,7 @@ import {
   createGoogleWorkspaceUser,
   deleteGoogleWorkspaceUser,
   getGoogleWorkspaceUser,
+  type GoogleWorkspaceConfig,
 } from '@/lib/clients/google-workspace';
 import { generateSecurePassword } from '@/lib/utils/password-generator';
 import type {
@@ -238,6 +239,7 @@ export function getGoogleWorkspaceCredentials(
  * - No manual license assignment needed on Flexible Plan
  *
  * @param params - Account creation parameters
+ * @param config - Optional Google Workspace credentials (uses env vars if not provided)
  * @returns EmailAccountResult with credentials or error
  *
  * @example
@@ -246,7 +248,7 @@ export function getGoogleWorkspaceCredentials(
  *   username: 'john.doe',
  *   firstName: 'John',
  *   lastName: 'Doe',
- * });
+ * }, credentials);
  *
  * if (result.success) {
  *   console.log(`Created: ${result.email}`);
@@ -254,7 +256,8 @@ export function getGoogleWorkspaceCredentials(
  * }
  */
 export async function createEmailAccount(
-  params: CreateEmailAccountParams
+  params: CreateEmailAccountParams,
+  config?: GoogleWorkspaceConfig
 ): Promise<EmailAccountResult> {
   const { domain, username, firstName, lastName, password: providedPassword } = params;
 
@@ -321,12 +324,16 @@ export async function createEmailAccount(
   try {
     // Create user in Google Workspace
     // License is automatically assigned (Flexible Plan default)
-    const googleUser = await createGoogleWorkspaceUser(domain, {
-      username,
-      firstName,
-      lastName,
-      password,
-    });
+    const googleUser = await createGoogleWorkspaceUser(
+      domain,
+      {
+        username,
+        firstName,
+        lastName,
+        password,
+      },
+      config
+    );
 
     // Generate credentials
     const credentials = getGoogleWorkspaceCredentials(email, password);
@@ -356,17 +363,21 @@ export async function createEmailAccount(
  * Verifies that an email account exists and is accessible in Google Workspace
  *
  * @param email - Full email address to verify
+ * @param config - Optional Google Workspace credentials
  * @returns EmailVerificationResult with verification status
  *
  * @example
- * const result = await verifyEmailAccount('john.doe@example.com');
+ * const result = await verifyEmailAccount('john.doe@example.com', credentials);
  * if (result.isVerified) {
  *   console.log('Account is active and ready to use');
  * }
  */
-export async function verifyEmailAccount(email: string): Promise<EmailVerificationResult> {
+export async function verifyEmailAccount(
+  email: string,
+  config?: GoogleWorkspaceConfig
+): Promise<EmailVerificationResult> {
   try {
-    const user = await getGoogleWorkspaceUser(email);
+    const user = await getGoogleWorkspaceUser(email, config);
 
     // Check if user is suspended or has other issues
     const isActive = !user.suspended && !user.archived;

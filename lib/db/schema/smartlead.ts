@@ -64,8 +64,12 @@ export const smartleadAccountMappings = pgTable("smartlead_account_mappings", {
 ]);
 
 /**
- * Smartlead sync logs
+ * Smartlead sync logs (CURRENTLY UNUSED)
  * Audit trail of all Smartlead synchronization events
+ *
+ * Note: Automated sync not yet implemented. This table will be used
+ * when automatic bidirectional sync between MailEye and Smartlead is added.
+ * See docs/database-architecture.md for details.
  */
 export const smartleadSyncLogs = pgTable("smartlead_sync_logs", {
   id: uuid("id").primaryKey().defaultRandom(),
