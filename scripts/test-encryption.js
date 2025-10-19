@@ -42,7 +42,7 @@ function testEncryptionKey() {
   try {
     keyBuffer = Buffer.from(key, 'base64');
     console.log('✅ Key is valid base64 format');
-  } catch (error) {
+  } catch {
     console.log('❌ FAILED: Key is not valid base64');
     console.log('');
     process.exit(1);

@@ -121,7 +121,7 @@ function calculateSetupStatus(
 
   // Check DMARC status separately
   const dmarcConfigured = dnsRecordsByType.DMARC.length > 0;
-  const dmarcPending = !dmarcConfigured && domain.dnsConfiguredAt && 
+  const dmarcPending = !dmarcConfigured && !!domain.dnsConfiguredAt &&
     ((Date.now() - domain.dnsConfiguredAt.getTime()) / (1000 * 60 * 60)) < 48;
 
   // Email accounts tab status

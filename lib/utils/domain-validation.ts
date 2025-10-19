@@ -235,7 +235,7 @@ export async function validateDomain(
  * Detect domain registrar/provider from domain name
  * This is a heuristic based on common patterns
  */
-export function detectProvider(_domain: string): string {
+export function detectProvider(): string {
   // Simple detection - can be enhanced with WHOIS lookup in future
   // For now, return 'other' and let user select
   return 'other';

@@ -1,46 +1,3 @@
-## Kiro System - Adaptation of Amazon's Spec-Driven Development
-
-This project uses an adaptation of Amazon's **Kiro System** for structured feature development. The original Kiro system has been adapted to work with Claude Code through templates and workflow guidance.
-
-### Kiro Workflow (Amazon's 3-Phase Approach)
-1. **Requirements** (`requirements.md`) - What needs to be built
-2. **Design** (`design.md`) - How it will be built  
-3. **Tasks** (`tasks.md`) - Step-by-step implementation plan
-
-### Directory Structure
-- `.kiro/specs/{feature-name}/` - Individual feature specifications
-- `.kiro/kiro-system-templates/` - Templates and documentation
-  - `requirements-template.md` - Template for requirements
-  - `design-template.md` - Template for technical design
-  - `tasks-template.md` - Template for implementation tasks
-  - `how-kiro-works.md` - Detailed Kiro documentation
-
-### How Claude Code Should Work with Kiro
-
-#### When Asked to Create New Features:
-1. **Check for existing specs first**: Look in `.kiro/specs/` for any existing feature documentation
-2. **Use templates**: Copy templates from `.kiro/kiro-system-templates/` when creating new specs
-3. **Follow the 3-phase process**: Requirements → Design → Tasks → Implementation
-4. **Require approval**: Each phase needs explicit user approval before proceeding
-
-#### Template Usage:
-- **Requirements**: Use `requirements-template.md` to create user stories and EARS acceptance criteria
-- **Design**: Use `design-template.md` for technical architecture and component design
-- **Tasks**: Use `tasks-template.md` to break down implementation into numbered, actionable tasks
-
-#### During Implementation:
-- **Reference requirements**: Always link tasks back to specific requirements
-- **Work incrementally**: Implement tasks one at a time, not all at once
-- **Validate against specs**: Ensure implementations match the design and requirements
-- **Update documentation**: Keep specs updated if changes are needed
-
-#### Key Behaviors:
-- **Always suggest using Kiro** when user wants to build new features
-- **Guide through templates** if user is unfamiliar with the process
-- **Enforce the approval process** - don't skip phases
-- **Maintain traceability** from requirements to code
-- **Never run npm run dev**: Do not automatically start the development server as part of checking processes
-
 ### Application Routes
 
 #### Current Route Structure:
@@ -121,8 +78,6 @@ stack/ # Stack Auth configuration
 - **TypeScript everywhere**: Full type safety across data and action layers
 - **Performance first**: Server Components for initial renders, TanStack Query for client interactions
 
-### Types Architecture
-
 #### TypeScript Types Organization (`lib/types/`)
 Types should be organized by domain/feature for maintainability:
 
@@ -162,8 +117,6 @@ export async function startAudit(config: AuditConfiguration): Promise<AuditSessi
 3. **Use Crawlee's built-in error handling**: Leverage Crawlee's logging and session management for errors
 4. **Standard Error objects**: Use JavaScript's native Error class for custom error handling
 
-### Component Organization Guidelines
-
 #### Component Placement Rules:
 1. **All reusable components go in `components/`**: Never create components directly in page directories
 2. **Organize by feature**: Group related components in feature-specific folders (`auth/`, `settings/`, `dashboard/`)
@@ -197,8 +150,6 @@ components/
 - Use absolute imports: `@/components/settings/SettingsForm`
 - Export components as default exports
 - Co-locate types and interfaces with components when component-specific
-
-### Design System Guidelines
 
 #### shadcn/ui Integration:
 - **UI Library**: Project uses shadcn/ui with "new-york" style variant
@@ -427,29 +378,18 @@ await disconnectGoogleWorkspaceAction();
 await disconnectSmartleadAction();
 ```
 
-#### Credential Setup Flow:
-
-**Current Implementation:**
-1. **Cloudflare**: Required first - shown automatically on domains page if not connected
-2. **Google Workspace**: Optional - needed for DKIM record generation (DNS setup will skip DKIM with warning if not configured)
-3. **Smartlead**: Optional - needed for email warmup integration
-
-**UI Components:**
-- `components/domains/CloudflareSetup.tsx` - Cloudflare connection UI (implemented)
-- Google Workspace and Smartlead setup UIs need to be created if user-specific credentials are desired
-
-**Note on Google Workspace:**
-- Currently uses global environment variables (`GOOGLE_SERVICE_ACCOUNT_EMAIL`, `GOOGLE_PRIVATE_KEY`, `GOOGLE_ADMIN_EMAIL`)
-- Can be made user-specific by creating a setup UI component and using the save action
-- DNS setup gracefully handles missing Google Workspace credentials by skipping DKIM records
 
 ## Code Quality & Linting
 
 ### Running Linter
-**IMPORTANT**: Always run `npm run lint` before marking tasks as complete.
+**IMPORTANT**: Always run `npm run lint:types and npm run lint:eslint` before marking tasks as complete.
 
 ```bash
-npm run lint
+npm run lint:types
+```
+
+```bash
+npm run lint:estlint
 ```
 
 **This command checks:**

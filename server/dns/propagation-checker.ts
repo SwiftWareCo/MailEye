@@ -471,19 +471,31 @@ export async function checkDomainPropagationFromDB(
 
 /**
  * Update DNS record propagation status in database
+ * Note: Schema doesn't have propagationStatus/lastCheckedAt fields yet
+ * This function is ready for when schema is updated
+ *
+ * @param recordId - DNS record ID
+ * @param propagationPercentage - Propagation percentage (0-100) - currently unused
+ * @param checkedAt - When the check was performed - currently unused
  */
 export async function updateRecordPropagationStatus(
   recordId: string,
   propagationPercentage: number,
   checkedAt: Date
 ): Promise<void> {
-  const propagationStatus = determinePropagationStatusEnum(propagationPercentage);
+  // Silence unused variable warnings - these will be used when schema is updated
+  void propagationPercentage;
+  void checkedAt;
 
+  // const propagationStatus = determinePropagationStatusEnum(propagationPercentage);
+
+  // TODO: Add propagationStatus and lastCheckedAt to dns_records schema
+  // For now, just update the updatedAt timestamp
   await db
     .update(dnsRecords)
     .set({
-      propagationStatus,
-      lastCheckedAt: checkedAt,
+      // propagationStatus,
+      // lastCheckedAt: checkedAt,
       updatedAt: new Date(),
     })
     .where(eq(dnsRecords.id, recordId));

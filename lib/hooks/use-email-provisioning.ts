@@ -7,7 +7,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createEmailAccountAction } from '@/server/email/email.actions';
 import { batchCreateEmailAccountsAction } from '@/server/email/batch-email.actions';
-import type { EmailAccountResult, BatchEmailProvisioningResult } from '@/lib/types/email';
 
 /**
  * Hook for single email account creation

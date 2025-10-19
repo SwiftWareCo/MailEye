@@ -19,9 +19,6 @@ import {
 } from '@/lib/types/dns';
 import { resolveAllIPsFromSPF } from './spf-ip-resolver';
 import { validateSPFSyntax, parseSPFRecord } from './spf-parser';
-import { db } from '@/lib/db';
-import { spfRecords } from '@/lib/db/schema/spf-dmarc';
-import { eq } from 'drizzle-orm';
 
 /**
  * Maximum character limit for DNS TXT records
@@ -281,125 +278,7 @@ function validateFlattenedSPF(flattenedRecord: string): {
   };
 }
 
-/**
- * Store flattened SPF record in database
- *
- * @param domainId - Domain ID
- * @param result - Flattened SPF result
- * @returns Database record ID
- */
-export async function storeFlattenedSPF(
-  domainId: string,
-  result: FlattenedSPFResult
-): Promise<string> {
-  // Check if SPF record already exists for this domain
-  const existing = await db
-    .select()
-    .from(spfRecords)
-    .where(eq(spfRecords.domainId, domainId))
-    .limit(1);
 
-  // Prepare expanded IPs for storage
-  const expandedIps = {
-    ipv4: result.ipv4Addresses,
-    ipv6: result.ipv6Addresses,
-    resolvedIncludes: result.resolvedIncludes.map(inc => ({
-      domain: inc.domain,
-      ipv4Count: inc.ipv4.length,
-      ipv6Count: inc.ipv6.length,
-      lookups: inc.nestedLookups,
-      error: inc.error,
-    })),
-  };
-
-  const spfData = {
-    domainId,
-    rawRecord: result.originalRecord,
-    flattenedRecord: result.flattenedRecord,
-    isFlattened: true,
-    mechanismCount: result.lookupCountAfter,
-    includeCount: result.resolvedIncludes.length,
-    lookupCount: result.lookupCountAfter,
-    isValid: result.success,
-    validationErrors: result.errors.length > 0 ? result.errors : null,
-    lastValidatedAt: result.timestamp,
-    flatteningStrategy: 'ip_expansion',
-    expandedIps,
-    updatedAt: new Date(),
-  };
-
-  if (existing.length > 0) {
-    // Update existing record
-    await db
-      .update(spfRecords)
-      .set(spfData)
-      .where(eq(spfRecords.id, existing[0].id));
-
-    return existing[0].id;
-  } else {
-    // Insert new record
-    const [inserted] = await db
-      .insert(spfRecords)
-      .values(spfData)
-      .returning({ id: spfRecords.id });
-
-    return inserted.id;
-  }
-}
-
-/**
- * Get flattened SPF record from database
- *
- * @param domainId - Domain ID
- * @returns Flattened SPF result or null if not found
- */
-export async function getFlattenedSPF(domainId: string): Promise<FlattenedSPFResult | null> {
-  const [record] = await db
-    .select()
-    .from(spfRecords)
-    .where(eq(spfRecords.domainId, domainId))
-    .limit(1);
-
-  if (!record || !record.isFlattened) {
-    return null;
-  }
-
-  const expandedIps = record.expandedIps as {
-    ipv4: string[];
-    ipv6: string[];
-    resolvedIncludes: Array<{
-      domain: string;
-      ipv4Count: number;
-      ipv6Count: number;
-      lookups: number;
-      error?: string;
-    }>;
-  };
-
-  // Reconstruct ResolvedInclude[] from stored data
-  const resolvedIncludes: ResolvedInclude[] = expandedIps.resolvedIncludes.map(inc => ({
-    domain: inc.domain,
-    ipv4: [], // We don't store individual IPs per include, only totals
-    ipv6: [],
-    nestedLookups: inc.lookups,
-    error: inc.error,
-  }));
-
-  return {
-    success: record.isValid,
-    flattenedRecord: record.flattenedRecord || '',
-    originalRecord: record.rawRecord,
-    lookupCountBefore: record.includeCount,
-    lookupCountAfter: record.lookupCount,
-    ipv4Addresses: expandedIps.ipv4,
-    ipv6Addresses: expandedIps.ipv6,
-    resolvedIncludes,
-    characterCount: record.flattenedRecord?.length || 0,
-    errors: (record.validationErrors as string[]) || [],
-    warnings: [],
-    timestamp: record.lastValidatedAt || record.createdAt,
-  };
-}
 
 /**
  * Calculate optimal flattening strategy

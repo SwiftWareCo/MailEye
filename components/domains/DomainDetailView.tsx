@@ -27,12 +27,10 @@ import {
   LayoutDashboard,
   Globe,
   Mail,
-  Flame,
 } from 'lucide-react';
 import { OverviewTab } from './tabs/OverviewTab';
 import { DNSTab } from './tabs/DnsTab';
-import { EmailAccountsTab } from './tabs/EmailAccountsTab';
-import { WarmupTab } from './tabs/WarmupTab';
+import { EmailAccountsTable } from '@/components/email-accounts/EmailAccountsTable';
 import type { DomainDetails, TabBadgeStatus } from '@/lib/types/domain-details';
 
 interface DomainDetailViewProps {
@@ -69,8 +67,6 @@ export function DomainDetailView({
   onConfirmManualVerification,
   onAddDKIMRecord,
   onCreateDMARCRecord,
-  onCreateEmailAccount,
-  onConnectToSmartlead,
 }: DomainDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
@@ -96,23 +92,21 @@ export function DomainDetailView({
         return { status: 'not-started' };
 
       case 'email':
-        if (setupStatus.emailAccounts.isComplete) {
-          return { status: 'complete' };
-        } else if (setupStatus.emailAccounts.accountCount > 0) {
-          return {
-            status: 'in-progress',
-            label: `${setupStatus.emailAccounts.accountCount}`,
-          };
-        }
-        return { status: 'not-started' };
+        // Combined email accounts + warmup status
+        const totalAccounts = setupStatus.emailAccounts.accountCount;
+        const connectedAccounts = setupStatus.warmup.accountsConnected;
 
-      case 'warmup':
         if (setupStatus.warmup.isComplete) {
           return { status: 'complete' };
-        } else if (setupStatus.warmup.smartleadConnected) {
+        } else if (connectedAccounts > 0) {
           return {
             status: 'in-progress',
-            label: `${setupStatus.warmup.accountsConnected}/${setupStatus.warmup.accountsTotal}`,
+            label: `${connectedAccounts}/${totalAccounts} warmed`,
+          };
+        } else if (totalAccounts > 0) {
+          return {
+            status: 'warning',
+            label: `${totalAccounts} not connected`,
           };
         }
         return { status: 'not-started' };
@@ -193,9 +187,6 @@ export function DomainDetailView({
         }
 
         return true;
-      case 'warmup':
-        // Warmup tab requires at least one email account
-        return setupStatus.emailAccounts.accountCount === 0;
       default:
         return false;
     }
@@ -211,8 +202,6 @@ export function DomainDetailView({
           return 'Complete Google Workspace verification or configure DNS records first';
         }
         return '';
-      case 'warmup':
-        return 'Create email accounts first';
       default:
         return '';
     }
@@ -334,7 +323,7 @@ export function DomainDetailView({
                         className='relative'
                       >
                         <Mail className='h-4 w-4 mr-2' />
-                        Email Accounts
+                        Email Accounts & Warmup
                         <Lock className='h-3 w-3 ml-1 text-muted-foreground' />
                       </TabsTrigger>
                     </TooltipTrigger>
@@ -345,33 +334,8 @@ export function DomainDetailView({
                 ) : (
                   <TabsTrigger value='email'>
                     <Mail className='h-4 w-4 mr-2' />
-                    Email Accounts
+                    Email Accounts & Warmup
                     {renderTabBadge('email')}
-                  </TabsTrigger>
-                )}
-
-                {isTabLocked('warmup') ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <TabsTrigger
-                        value='warmup'
-                        disabled={true}
-                        className='relative'
-                      >
-                        <Flame className='h-4 w-4 mr-2' />
-                        Warmup & Integration
-                        <Lock className='h-3 w-3 ml-1 text-muted-foreground' />
-                      </TabsTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{getLockedReason('warmup')}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <TabsTrigger value='warmup'>
-                    <Flame className='h-4 w-4 mr-2' />
-                    Warmup & Integration
-                    {renderTabBadge('warmup')}
                   </TabsTrigger>
                 )}
               </TooltipProvider>
@@ -395,18 +359,21 @@ export function DomainDetailView({
               />
             </TabsContent>
             <TabsContent value='email'>
-              <EmailAccountsTab
-                details={details}
-                onCreateAccount={onCreateEmailAccount}
-                onNavigateToTab={handleNavigateToTab}
-              />
-            </TabsContent>
-            <TabsContent value='warmup'>
-              <WarmupTab
-                details={details}
-                onConnectToSmartlead={onConnectToSmartlead}
-                onNavigateToTab={handleNavigateToTab}
-              />
+              <div className='space-y-6'>
+                <div className='flex items-center justify-between'>
+                  <div>
+                    <h2 className='text-2xl font-bold'>Email Accounts</h2>
+                    <p className='text-sm text-muted-foreground mt-1'>
+                      Manage email accounts and warmup settings for {domain.domain}
+                    </p>
+                  </div>
+                </div>
+
+                <EmailAccountsTable
+                  emailAccounts={details.emailAccounts}
+                  onRefresh={() => window.location.reload()}
+                />
+              </div>
             </TabsContent>
           </CardContent>
         </Tabs>

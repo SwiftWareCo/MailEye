@@ -2,14 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserWithMetadata } from '@/server/auth/auth.data';
 import { completeOnboardingWithData } from '@/server/auth/auth.actions';
 
-interface OnboardingFormProps {
-  user: UserWithMetadata;
-}
-
-export default function OnboardingForm(_props: OnboardingFormProps) {
+export default function OnboardingForm() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);

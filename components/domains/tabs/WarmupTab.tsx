@@ -6,6 +6,8 @@
 
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,22 +25,32 @@ import {
   CheckCircle2,
   AlertCircle,
   TrendingUp,
+  Settings,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { LockedTabContent } from '../LockedTabContent';
+import { SmartleadOAuthGuide } from '@/components/warmup/SmartleadOAuthGuide';
+import { getEmailAccountPasswordAction } from '@/server/email/email.actions';
 import type { DomainDetails } from '@/lib/types/domain-details';
 
 interface WarmupTabProps {
   details: DomainDetails;
   onConnectToSmartlead?: (emailAccountId: string) => void;
   onNavigateToTab?: (tab: string) => void;
+  onRefresh?: () => void;
 }
 
 export function WarmupTab({
   details,
-  onConnectToSmartlead,
   onNavigateToTab,
+  onRefresh,
 }: WarmupTabProps) {
   const { emailAccounts, setupStatus } = details;
+  const router = useRouter();
+  const [oauthGuideOpen, setOauthGuideOpen] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('');
+  const [selectedAccountEmail, setSelectedAccountEmail] = useState<string>('');
+  const [selectedAccountPassword, setSelectedAccountPassword] = useState<string>('');
 
   // Check if tab should be locked
   const isLocked = setupStatus.emailAccounts.accountCount === 0;
@@ -78,6 +90,23 @@ export function WarmupTab({
     if (!dayCount) return 0;
     // Typical warmup is 30 days
     return Math.min((dayCount / 30) * 100, 100);
+  };
+
+  const handleOpenOAuthGuide = async (accountId: string, email: string) => {
+    setSelectedAccountId(accountId);
+    setSelectedAccountEmail(email);
+
+    // Fetch password for this account
+    const result = await getEmailAccountPasswordAction(accountId);
+
+    if (result.success && result.password) {
+      setSelectedAccountPassword(result.password);
+      setOauthGuideOpen(true);
+    } else {
+      toast.error('Failed to load account details', {
+        description: result.error || 'Could not retrieve password',
+      });
+    }
   };
 
   return (
@@ -240,13 +269,22 @@ export function WarmupTab({
                         )}
                       </TableCell>
                       <TableCell>
-                        {!account.smartleadAccountId && (
+                        {!account.smartleadAccountId ? (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => onConnectToSmartlead?.(account.id)}
+                            onClick={() => handleOpenOAuthGuide(account.id, account.email)}
                           >
-                            Connect
+                            <Settings className="h-3 w-3 mr-1" />
+                            Setup Warmup
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => router.push(`/email-accounts/${account.id}`)}
+                          >
+                            View Metrics
                           </Button>
                         )}
                       </TableCell>
@@ -290,6 +328,16 @@ export function WarmupTab({
           </div>
         </CardContent>
       </Card>
+
+      {/* Smartlead OAuth Guide Modal */}
+      <SmartleadOAuthGuide
+        open={oauthGuideOpen}
+        onOpenChange={setOauthGuideOpen}
+        email={selectedAccountEmail}
+        password={selectedAccountPassword}
+        emailAccountId={selectedAccountId}
+        onSyncSuccess={onRefresh}
+      />
     </div>
   );
 }

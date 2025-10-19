@@ -2,6 +2,7 @@
 
 import { listCampaigns } from '@/lib/clients/smartlead';
 import { getGoogleWorkspaceConfig, getGoogleAdminClient } from '@/lib/clients/google-workspace';
+import { getSmartleadCredentials } from '@/server/credentials/credentials.data';
 
 export interface TestResult {
   success: boolean;
@@ -25,7 +26,15 @@ export async function testCloudflareConnection(): Promise<TestResult> {
  */
 export async function testSmartleadConnection(): Promise<TestResult> {
   try {
-    const campaigns = await listCampaigns();
+    const smartleadCreds = await getSmartleadCredentials();
+    if (!smartleadCreds || !smartleadCreds.apiKey) {
+      return {
+        success: false,
+        message: 'Smartlead credentials not configured. Please connect your account in Settings.',
+      };
+    }
+
+    const campaigns = await listCampaigns(smartleadCreds.apiKey);
 
     return {
       success: true,

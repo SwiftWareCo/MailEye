@@ -17,8 +17,9 @@ export interface DNSRecordInfo {
   priority: number | null;
   status: string;
   purpose: string | null;
-  lastCheckedAt: Date | null;
   createdAt: Date;
+  // Note: lastCheckedAt field is planned but not yet in schema
+  // lastCheckedAt?: Date | null;
 }
 
 /**

@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   generateSecurePassword,
   validatePasswordStrength,
-  type PasswordStrength,
 } from '../password-generator';
 
 describe('generateSecurePassword', () => {

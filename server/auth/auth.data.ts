@@ -1,8 +1,6 @@
 import 'server-only';
 
 import { stackServerApp } from '../../stack/server';
-import { db } from '../../lib/db';
-import { eq, desc } from 'drizzle-orm';
 
 // Stack Auth metadata type definitions
 export type StackAuthUserMetadata = {

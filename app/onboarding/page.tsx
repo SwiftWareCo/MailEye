@@ -62,7 +62,7 @@ export default async function OnboardingPage() {
             </p>
           </div>
 
-          <OnboardingForm user={user} />
+          <OnboardingForm />
         </div>
 
         {/* Footer */}

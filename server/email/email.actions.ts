@@ -8,7 +8,7 @@
 
 import { stackServerApp } from '@/stack/server';
 import { createEmailAccount } from './google-workspace-provisioner';
-import { saveEmailAccount } from './email-account-manager';
+import { saveEmailAccount, getEmailAccountPasswordForUser } from './email-account-manager';
 import { getGoogleWorkspaceCredentials } from '../credentials/credentials.data';
 import type { EmailAccountResult, CreateEmailAccountParams, EmailCredentials } from '@/lib/types/email';
 import { getDomainById } from '../domain/domain.data';
@@ -344,3 +344,50 @@ export async function batchCreateEmailAccountsAction(params: {
     results,
   };
 }
+
+/**
+ * Get Email Account Password Action
+ *
+ * Retrieves the decrypted password for an email account (for display to user)
+ *
+ * SECURITY: Only returns password if authenticated user owns the account
+ *
+ * @param accountId - Email account ID
+ * @returns Password or null if unauthorized/not found
+ *
+ * @example
+ * const password = await getEmailAccountPasswordAction('account-123');
+ */
+export async function getEmailAccountPasswordAction(
+  accountId: string
+): Promise<{ success: boolean; password?: string; error?: string }> {
+  // Authenticate user
+  const user = await stackServerApp.getUser();
+  if (!user) {
+    return {
+      success: false,
+      error: 'Authentication required',
+    };
+  }
+
+  // Get password with authorization check
+  const password = await getEmailAccountPasswordForUser(accountId, user.id);
+
+  if (!password) {
+    return {
+      success: false,
+      error: 'Email account not found or unauthorized',
+    };
+  }
+
+  return {
+    success: true,
+    password,
+  };
+}
+
+/**
+ * Alias for getEmailAccountPasswordAction
+ * Used for getting decrypted password for OAuth setup flows
+ */
+export const getDecryptedPasswordAction = getEmailAccountPasswordAction;

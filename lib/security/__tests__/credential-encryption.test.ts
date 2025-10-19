@@ -209,20 +209,20 @@ describe('credential-encryption', () => {
 
     it('should throw when data has been tampered with', () => {
       const encrypted = encryptCredential('test');
-      const [iv, data, tag] = encrypted.split(':');
+      const [iv, data, authTag] = encrypted.split(':');
 
       // Tamper with the encrypted data by decoding, modifying, and re-encoding
       const dataBuffer = Buffer.from(data, 'base64');
       dataBuffer[0] = dataBuffer[0] ^ 0xFF; // Flip all bits in first byte
       const tamperedData = dataBuffer.toString('base64');
-      const tampered = `${iv}:${tamperedData}:${tag}`;
+      const tampered = `${iv}:${tamperedData}:${authTag}`;
 
       expect(() => decryptCredential(tampered)).toThrow();
     });
 
     it('should throw when auth tag is wrong', () => {
       const encrypted = encryptCredential('test');
-      const [iv, data, tag] = encrypted.split(':');
+      const [iv, data] = encrypted.split(':');
 
       // Use wrong auth tag
       const wrongTag = Buffer.from('a'.repeat(16)).toString('base64');

@@ -10,7 +10,6 @@ import { stackServerApp } from '@/stack/server';
 import { createEmailAccount } from './google-workspace-provisioner';
 import { saveEmailAccount } from './email-account-manager';
 import type {
-  BatchEmailProvisioningParams,
   BatchEmailProvisioningResult,
   BatchEmailAccountResult,
   EmailProvisioningError,
@@ -194,12 +193,7 @@ export async function batchCreateEmailAccountsAction(params: {
             email: provisionResult.email,
             password: provisionResult.credentials.smtp.password,
             displayName: `${account.firstName} ${account.lastName}`,
-            smtpHost: provisionResult.credentials.smtp.host,
-            smtpPort: provisionResult.credentials.smtp.port,
-            smtpUsername: provisionResult.credentials.smtp.username,
-            imapHost: provisionResult.credentials.imap.host,
-            imapPort: provisionResult.credentials.imap.port,
-            imapUsername: provisionResult.credentials.imap.username,
+            credentials: provisionResult.credentials,
             provider: 'google_workspace',
             providerUserId: provisionResult.userId,
           });
@@ -211,7 +205,7 @@ export async function batchCreateEmailAccountsAction(params: {
             username: account.username,
             email: provisionResult.email,
             success: true,
-            accountId: savedAccount.id,
+            accountId: savedAccount.accountId,
             providerUserId: provisionResult.userId,
             credentials: provisionResult.credentials,
             retryCount: 0,

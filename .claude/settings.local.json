@@ -6,7 +6,8 @@
       "Bash(npx shadcn@latest add:*)",
       "Bash(npx tsc:*)",
       "Bash(npm test:*)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "Bash(npm run lint:eslint:*)"
     ],
     "deny": [],
     "ask": []

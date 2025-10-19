@@ -14,13 +14,12 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, AlertCircle, Globe, Plus } from 'lucide-react';
+import { Loader2, AlertCircle, Globe } from 'lucide-react';
 import { NameserverInstructions } from './NameserverInstructions';
 import { useConnectDomain } from '@/lib/hooks/use-domains';
 import type {

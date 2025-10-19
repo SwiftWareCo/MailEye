@@ -36,8 +36,10 @@ export async function updateUserCredentials(
     };
 
     // Save to Stack Auth
+    // Cast to any to work around Stack Auth's ReadonlyJson type restriction
     await user.update({
-      serverMetadata: updatedCredentials as Record<string, unknown>,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      serverMetadata: updatedCredentials as any,
     });
 
     return { success: true };
@@ -72,8 +74,10 @@ export async function removeServiceCredentials(
     delete existingCredentials[service];
 
     // Save updated credentials
+    // Cast to any to work around Stack Auth's ReadonlyJson type restriction
     await user.update({
-      serverMetadata: existingCredentials as ReadonlyJson,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      serverMetadata: existingCredentials as any,
     });
 
     console.log(`[Credentials] Removed ${service} credentials for user ${user.id}`);

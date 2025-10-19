@@ -27,6 +27,7 @@ import {
   updateEmailAccount as updateSmartleadAccount,
   updateWarmupSettings as updateSmartleadWarmup,
 } from '@/lib/clients/smartlead';
+import { getSmartleadCredentials } from '@/server/credentials/credentials.data';
 import type {
   SmartleadConnectionParams,
   SmartleadConnectionResult,
@@ -184,6 +185,7 @@ async function createSmartleadMapping(
  * Calls Smartlead API to connect an email account
  */
 async function callSmartleadAPI(
+  apiKey: string,
   credentials: {
     email: string;
     displayName: string;
@@ -211,8 +213,20 @@ async function callSmartleadAPI(
     const firstName = nameParts[0] || 'User';
     const lastName = nameParts.slice(1).join(' ') || 'Account';
 
+    // Log connection attempt (without passwords for security)
+    console.log('[Smartlead] Connecting email account:', {
+      email: credentials.email,
+      smtpHost: credentials.smtp.host,
+      smtpPort: credentials.smtp.port,
+      imapHost: credentials.imap.host,
+      imapPort: credentials.imap.port,
+      warmupEnabled: config.warmupEnabled,
+      
+    });
+
     // Call Smartlead API with correct endpoint and fields
-    const response: SmartleadApiResponse = await smartleadConnectAPI({
+    // Note: Smartlead uses the same password and username (email) for both SMTP and IMAP
+    const response: SmartleadApiResponse = await smartleadConnectAPI(apiKey, {
       email: credentials.email,
       firstName,
       lastName,
@@ -255,7 +269,7 @@ async function callSmartleadAPI(
     // Retry logic
     if (isRetryable && retryCount < MAX_RETRY_ATTEMPTS) {
       await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-      return callSmartleadAPI(credentials, config, retryCount + 1);
+      return callSmartleadAPI(apiKey, credentials, config, retryCount + 1);
     }
 
     // Determine error type
@@ -328,7 +342,20 @@ export async function connectEmailAccountToSmartlead(
   } = params;
 
   try {
-    // Step 1: Validate email account
+    // Step 1: Get user's Smartlead API credentials
+    const smartleadCreds = await getSmartleadCredentials();
+    if (!smartleadCreds || !smartleadCreds.apiKey) {
+      return {
+        success: false,
+        error: {
+          type: 'API_AUTHENTICATION_ERROR',
+          message: 'Smartlead credentials not configured. Please connect your Smartlead account in Settings.',
+          retryable: false,
+        },
+      };
+    }
+
+    // Step 2: Validate email account
     const validation = await validateEmailAccount(emailAccountId, userId);
     if (!validation.valid) {
       return {
@@ -337,7 +364,7 @@ export async function connectEmailAccountToSmartlead(
       };
     }
 
-    // Step 2: Check for existing connection
+    // Step 3: Check for existing connection
     const existingConnection = await checkExistingConnection(emailAccountId);
     if (existingConnection.exists) {
       return {
@@ -350,7 +377,7 @@ export async function connectEmailAccountToSmartlead(
       };
     }
 
-    // Step 3: Get account details and credentials
+    // Step 4: Get account details and credentials
     const account = await getEmailAccount(emailAccountId);
     const credentials = await getDecryptedCredentials(emailAccountId);
 
@@ -365,8 +392,9 @@ export async function connectEmailAccountToSmartlead(
       };
     }
 
-    // Step 4: Call Smartlead API
+    // Step 5: Call Smartlead API
     const apiResult = await callSmartleadAPI(
+      smartleadCreds.apiKey,
       {
         email: credentials.email,
         displayName: account.displayName || credentials.email,
@@ -478,7 +506,20 @@ export async function disconnectEmailAccountFromSmartlead(
   userId: string
 ): Promise<{ success: boolean; error?: SmartleadConnectionError }> {
   try {
-    // Step 1: Validate ownership
+    // Step 1: Get user's Smartlead API credentials
+    const smartleadCreds = await getSmartleadCredentials();
+    if (!smartleadCreds || !smartleadCreds.apiKey) {
+      return {
+        success: false,
+        error: {
+          type: 'API_AUTHENTICATION_ERROR',
+          message: 'Smartlead credentials not configured',
+          retryable: false,
+        },
+      };
+    }
+
+    // Step 2: Validate ownership
     const account = await getEmailAccount(emailAccountId);
     if (!account || account.userId !== userId) {
       return {
@@ -491,7 +532,7 @@ export async function disconnectEmailAccountFromSmartlead(
       };
     }
 
-    // Step 2: Get Smartlead account mapping
+    // Step 3: Get Smartlead account mapping
     const status = await getSmartleadConnectionStatus(emailAccountId);
     if (!status.connected || !status.smartleadAccountId) {
       return {
@@ -506,16 +547,16 @@ export async function disconnectEmailAccountFromSmartlead(
 
     const smartleadAccountId = status.smartleadAccountId;
 
-    // Step 3: Fetch all campaigns
+    // Step 4: Fetch all campaigns
     try {
-      const campaignsResponse = await listCampaigns();
+      const campaignsResponse = await listCampaigns(smartleadCreds.apiKey);
       const campaigns = Array.isArray(campaignsResponse) ? campaignsResponse : [];
 
-      // Step 4: Remove account from each campaign it's assigned to
+      // Step 5: Remove account from each campaign it's assigned to
       for (const campaign of campaigns) {
         try {
           // Check if this campaign uses this email account
-          const campaignAccounts = await listCampaignEmailAccounts(campaign.id);
+          const campaignAccounts = await listCampaignEmailAccounts(smartleadCreds.apiKey, campaign.id);
           const accountsArray = Array.isArray(campaignAccounts) ? campaignAccounts : [];
 
           const isInCampaign = accountsArray.some(
@@ -524,7 +565,7 @@ export async function disconnectEmailAccountFromSmartlead(
           );
 
           if (isInCampaign) {
-            await removeEmailAccountFromCampaign(campaign.id, smartleadAccountId);
+            await removeEmailAccountFromCampaign(smartleadCreds.apiKey, campaign.id, smartleadAccountId);
             console.log(`Removed account from campaign ${campaign.id}`);
           }
         } catch (campaignError) {
@@ -537,10 +578,9 @@ export async function disconnectEmailAccountFromSmartlead(
       // Continue with inactivation even if campaign removal fails
     }
 
-    // Step 5: Set account to inactive in Smartlead
+    // Step 6: Set account to inactive in Smartlead
     try {
-      await updateSmartleadAccount(smartleadAccountId, {
-        warmupEnabled: false,
+      await updateSmartleadAccount(smartleadCreds.apiKey, smartleadAccountId, {
         maxEmailPerDay: 0,
       });
     } catch (updateError) {
@@ -634,23 +674,32 @@ export async function getSmartleadConnectionStatus(emailAccountId: string): Prom
  * @example
  * await updateSmartleadWarmupSettings('account-123', {
  *   warmupEnabled: true,
- *   warmupReputation: 'good',
  *   maxEmailPerDay: 100,
  *   totalWarmupPerDay: 80,
  *   dailyRampup: 10,
+ *   replyRatePercentage: 30,
  * });
  */
 export async function updateSmartleadWarmupSettings(
   emailAccountId: string,
   settings: {
     warmupEnabled?: boolean;
-    warmupReputation?: 'average' | 'good' | 'excellent';
     maxEmailPerDay?: number;
     totalWarmupPerDay?: number;
     dailyRampup?: number;
+    replyRatePercentage?: number;
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Get user's Smartlead API credentials
+    const smartleadCreds = await getSmartleadCredentials();
+    if (!smartleadCreds || !smartleadCreds.apiKey) {
+      return {
+        success: false,
+        error: 'Smartlead credentials not configured',
+      };
+    }
+
     // Get Smartlead account ID
     const status = await getSmartleadConnectionStatus(emailAccountId);
     if (!status.connected || !status.smartleadAccountId) {
@@ -665,16 +714,16 @@ export async function updateSmartleadWarmupSettings(
     // Update warmup settings via POST endpoint
     if (
       settings.warmupEnabled !== undefined ||
-      settings.warmupReputation ||
       settings.totalWarmupPerDay ||
-      settings.dailyRampup
+      settings.dailyRampup ||
+      settings.replyRatePercentage
     ) {
       try {
-        await updateSmartleadWarmup(smartleadAccountId, {
+        await updateSmartleadWarmup(smartleadCreds.apiKey, smartleadAccountId, {
           warmupEnabled: settings.warmupEnabled,
-          warmupReputation: settings.warmupReputation,
           totalWarmupPerDay: settings.totalWarmupPerDay,
           dailyRampup: settings.dailyRampup,
+          replyRatePercentage: settings.replyRatePercentage,
         });
       } catch (warmupError) {
         console.error('Failed to update Smartlead warmup settings:', warmupError);
@@ -688,7 +737,7 @@ export async function updateSmartleadWarmupSettings(
     // Update send limits via account update endpoint (separate from warmup)
     if (settings.maxEmailPerDay !== undefined) {
       try {
-        await updateSmartleadAccount(smartleadAccountId, {
+        await updateSmartleadAccount(smartleadCreds.apiKey, smartleadAccountId, {
           maxEmailPerDay: settings.maxEmailPerDay,
         });
       } catch (accountError) {
@@ -722,29 +771,20 @@ export async function updateSmartleadWarmupSettings(
  * Process:
  * 1. Validates email account ownership
  * 2. Verifies Smartlead connection exists
- * 3. Optionally checks warmup health before assignment
- * 4. Assigns account to campaign via Smartlead API
+ * 3. Assigns account to campaign via Smartlead API
  *
  * @param emailAccountId - Local email account ID
  * @param campaignId - Smartlead campaign ID
  * @param userId - User ID for authorization
- * @param options - Optional settings (daily limit, skip health check)
  * @returns Success status
  *
  * @example
- * const result = await assignEmailAccountToCampaign('account-123', 12345, 'user-456', {
- *   dailyLimit: 50,
- *   skipHealthCheck: false
- * });
+ * const result = await assignEmailAccountToCampaign('account-123', 12345, 'user-456');
  */
 export async function assignEmailAccountToCampaign(
   emailAccountId: string,
   campaignId: number,
-  userId: string,
-  options?: {
-    dailyLimit?: number;
-    skipHealthCheck?: boolean;
-  }
+  userId: string
 ): Promise<{ success: boolean; error?: SmartleadConnectionError }> {
   try {
     // Step 1: Validate ownership
@@ -773,19 +813,25 @@ export async function assignEmailAccountToCampaign(
       };
     }
 
-    // Step 3: Health check (optional)
-    // TODO: Implement warmup stats health check when warmup-stats polling is available
-    // if (!options?.skipHealthCheck) {
-    //   const warmupStats = await getWarmupStats(status.smartleadAccountId);
-    //   // Check deliverability rate, bounce rate, etc.
-    // }
+    // Step 3: Get user's Smartlead API credentials
+    const smartleadCreds = await getSmartleadCredentials();
+    if (!smartleadCreds || !smartleadCreds.apiKey) {
+      return {
+        success: false,
+        error: {
+          type: 'API_AUTHENTICATION_ERROR',
+          message: 'Smartlead credentials not configured',
+          retryable: false,
+        },
+      };
+    }
 
     // Step 4: Assign to campaign
     try {
       await addEmailAccountToCampaign(
+        smartleadCreds.apiKey,
         campaignId,
-        status.smartleadAccountId,
-        options?.dailyLimit ? { dailyLimit: options.dailyLimit } : undefined
+        status.smartleadAccountId
       );
 
       return { success: true };
@@ -840,6 +886,12 @@ export async function removeEmailAccountFromAllCampaigns(
   const errors: Array<{ campaignId: number; error: string }> = [];
 
   try {
+    // Get user's Smartlead API credentials
+    const smartleadCreds = await getSmartleadCredentials();
+    if (!smartleadCreds || !smartleadCreds.apiKey) {
+      throw new Error('Smartlead credentials not configured');
+    }
+
     // Validate ownership
     const account = await getEmailAccount(emailAccountId);
     if (!account || account.userId !== userId) {
@@ -855,13 +907,13 @@ export async function removeEmailAccountFromAllCampaigns(
     const smartleadAccountId = status.smartleadAccountId;
 
     // Fetch all campaigns
-    const campaignsResponse = await listCampaigns();
+    const campaignsResponse = await listCampaigns(smartleadCreds.apiKey);
     const campaigns = Array.isArray(campaignsResponse) ? campaignsResponse : [];
 
     // Remove from each campaign
     for (const campaign of campaigns) {
       try {
-        const campaignAccounts = await listCampaignEmailAccounts(campaign.id);
+        const campaignAccounts = await listCampaignEmailAccounts(smartleadCreds.apiKey, campaign.id);
         const accountsArray = Array.isArray(campaignAccounts) ? campaignAccounts : [];
 
         const isInCampaign = accountsArray.some(
@@ -870,7 +922,7 @@ export async function removeEmailAccountFromAllCampaigns(
         );
 
         if (isInCampaign) {
-          await removeEmailAccountFromCampaign(campaign.id, smartleadAccountId);
+          await removeEmailAccountFromCampaign(smartleadCreds.apiKey, campaign.id, smartleadAccountId);
           removedCount++;
         }
       } catch (campaignError) {

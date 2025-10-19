@@ -72,111 +72,6 @@ export async function connectToSmartleadAction(
   return result;
 }
 
-/**
- * Batch connects multiple email accounts to Smartlead
- *
- * @param emailAccountIds - Array of local email account IDs
- * @param warmupConfig - Warmup settings (applied to all accounts)
- * @returns Array of connection results
- *
- * @example
- * const results = await batchConnectToSmartleadAction(
- *   ['email-1', 'email-2', 'email-3'],
- *   { warmupEnabled: true, maxEmailPerDay: 50 }
- * );
- */
-export async function batchConnectToSmartleadAction(
-  emailAccountIds: string[],
-  warmupConfig?: {
-    warmupEnabled?: boolean;
-    maxEmailPerDay?: number;
-    totalWarmupPerDay?: number;
-    dailyRampup?: number;
-  }
-): Promise<{
-  success: boolean;
-  results: Array<{
-    emailAccountId: string;
-    result: SmartleadConnectionResult;
-  }>;
-  summary: {
-    total: number;
-    successful: number;
-    failed: number;
-  };
-}> {
-  // Authenticate user
-  const user = await stackServerApp.getUser();
-  if (!user) {
-    return {
-      success: false,
-      results: emailAccountIds.map(id => ({
-        emailAccountId: id,
-        result: {
-          success: false,
-          error: {
-            type: 'API_AUTHENTICATION_ERROR',
-            message: 'Authentication required',
-            retryable: false,
-          },
-        },
-      })),
-      summary: {
-        total: emailAccountIds.length,
-        successful: 0,
-        failed: emailAccountIds.length,
-      },
-    };
-  }
-
-  const results: Array<{ emailAccountId: string; result: SmartleadConnectionResult }> = [];
-  let successCount = 0;
-  let failureCount = 0;
-
-  // Process accounts in parallel (max 3 concurrent to avoid rate limits)
-  const BATCH_SIZE = 3;
-  for (let i = 0; i < emailAccountIds.length; i += BATCH_SIZE) {
-    const batch = emailAccountIds.slice(i, i + BATCH_SIZE);
-
-    const batchResults = await Promise.all(
-      batch.map(async (emailAccountId) => {
-        const params: SmartleadConnectionParams = {
-          emailAccountId,
-          userId: user.id,
-          warmupEnabled: warmupConfig?.warmupEnabled ?? true,
-          maxEmailPerDay: warmupConfig?.maxEmailPerDay ?? 50,
-          totalWarmupPerDay: warmupConfig?.totalWarmupPerDay ?? 40,
-          dailyRampup: warmupConfig?.dailyRampup ?? 5,
-        };
-
-        const result = await connectEmailAccountToSmartlead(params);
-
-        if (result.success) {
-          successCount++;
-        } else {
-          failureCount++;
-        }
-
-        return {
-          emailAccountId,
-          result,
-        };
-      })
-    );
-
-    results.push(...batchResults);
-  }
-
-  return {
-    success: successCount > 0 && failureCount === 0,
-    results,
-    summary: {
-      total: emailAccountIds.length,
-      successful: successCount,
-      failed: failureCount,
-    },
-  };
-}
 
 /**
  * Disconnects an email account from Smartlead
@@ -215,10 +110,10 @@ export async function updateWarmupSettingsAction(
   emailAccountId: string,
   settings: {
     warmupEnabled?: boolean;
-    warmupReputation?: 'average' | 'good' | 'excellent';
     maxEmailPerDay?: number;
     totalWarmupPerDay?: number;
     dailyRampup?: number;
+    replyRatePercentage?: number;
   }
 ): Promise<{ success: boolean; error?: string }> {
   const user = await stackServerApp.getUser();
@@ -235,16 +130,11 @@ export async function updateWarmupSettingsAction(
  *
  * @param emailAccountId - Local email account ID
  * @param campaignId - Smartlead campaign ID
- * @param options - Optional settings (daily limit, skip health check)
  * @returns Success status
  */
 export async function assignToCampaignAction(
   emailAccountId: string,
-  campaignId: number,
-  options?: {
-    dailyLimit?: number;
-    skipHealthCheck?: boolean;
-  }
+  campaignId: number
 ): Promise<{ success: boolean; error?: string }> {
   const user = await stackServerApp.getUser();
   if (!user) {
@@ -254,8 +144,7 @@ export async function assignToCampaignAction(
   const result = await assignEmailAccountToCampaign(
     emailAccountId,
     campaignId,
-    user.id,
-    options
+    user.id
   );
 
   if (!result.success) {

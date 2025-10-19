@@ -367,8 +367,6 @@ export function getTrackingSubdomainRecommendations(): string[] {
  * @returns Validation result
  */
 export async function validateTrackingDomainCNAME(
-  _fullTrackingDomain: string,
-  _expectedTarget: string
 ): Promise<{
   isValid: boolean;
   actualTarget?: string;

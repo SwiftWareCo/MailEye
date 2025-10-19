@@ -97,7 +97,7 @@ describe('DNS Query Service', () => {
     });
 
     it('should handle DNS query timeout', async () => {
-      mockResolver.resolveTxt.mockImplementation((_domain: string, _callback: DnsCallback<string[][]>) => {
+      mockResolver.resolveTxt.mockImplementation(() => {
         // Simulate timeout by never calling callback
         // The timeout in dns-query-service will reject the promise
       });

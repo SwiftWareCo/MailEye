@@ -10,7 +10,10 @@
 
 import { db } from '@/lib/db';
 import { emailAccounts } from '@/lib/db/schema/email-accounts';
-import { encryptCredential, decryptCredential } from '@/lib/security/credential-encryption';
+import {
+  encryptCredential,
+  decryptCredential,
+} from '@/lib/security/credential-encryption';
 import type { EmailCredentials } from '@/lib/types/email';
 import { eq, and, desc } from 'drizzle-orm';
 
@@ -146,7 +149,8 @@ export async function saveEmailAccount(
       accountId: insertedAccount.id,
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
     return {
       success: false,
       error: `Failed to save email account: ${errorMessage}`,
@@ -290,7 +294,10 @@ export async function getEmailAccountsByUserAndDomain(
 
     return accounts;
   } catch (error) {
-    console.error('Failed to retrieve email accounts by user and domain:', error);
+    console.error(
+      'Failed to retrieve email accounts by user and domain:',
+      error
+    );
     return [];
   }
 }
@@ -520,7 +527,9 @@ export async function deleteEmailAccount(accountId: string): Promise<boolean> {
  *   console.log('Email already registered');
  * }
  */
-export async function verifyEmailAccountExists(email: string): Promise<boolean> {
+export async function verifyEmailAccountExists(
+  email: string
+): Promise<boolean> {
   try {
     const [existing] = await db
       .select({ id: emailAccounts.id })
@@ -532,6 +541,48 @@ export async function verifyEmailAccountExists(email: string): Promise<boolean> 
   } catch (error) {
     console.error('Failed to verify email account existence:', error);
     return false;
+  }
+}
+
+/**
+ * Retrieves an email account password for display (with user authorization)
+ *
+ * SECURITY: Only returns password if user owns the account
+ *
+ * @param accountId - Email account ID
+ * @param userId - User ID for authorization
+ * @returns Decrypted password or null if unauthorized/not found
+ *
+ * @example
+ * const password = await getEmailAccountPasswordForUser('account-123', 'user-456');
+ * if (password) {
+ *   // Show password to user
+ * }
+ */
+export async function getEmailAccountPasswordForUser(
+  accountId: string,
+  userId: string
+): Promise<string | null> {
+  try {
+    // Get account with password
+    const account = await getEmailAccountWithPassword(accountId);
+
+    if (!account) {
+      return null;
+    }
+
+    // Verify user owns this account
+    if (account.userId !== userId) {
+      console.warn(
+        `Unauthorized password access attempt: User ${userId} tried to access account ${accountId}`
+      );
+      return null;
+    }
+
+    return account.password;
+  } catch (error) {
+    console.error('Failed to retrieve email account password:', error);
+    return null;
   }
 }
 

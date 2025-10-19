@@ -23,9 +23,18 @@ interface CredentialStatus {
   smartlead: boolean;
 }
 
+interface DomainWarmupStatus {
+  domainId: string;
+  status: 'overdue' | 'pending' | 'complete' | 'none';
+  pendingCount: number;
+  overdueCount: number;
+  totalAccounts: number;
+}
+
 interface DomainsContentProps {
   userId: string;
   initialDomains: Domain[];
+  warmupStatuses: DomainWarmupStatus[];
   credentialStatus: CredentialStatus;
   deleteDomainAction: (domainId: string) => Promise<{ success: boolean; error?: string }>;
   verifyNameserversAction: (domainId: string) => Promise<NameserverVerificationResult>;
@@ -35,6 +44,7 @@ interface DomainsContentProps {
 export function DomainsContent({
   userId,
   initialDomains,
+  warmupStatuses,
   credentialStatus,
   deleteDomainAction,
   verifyNameserversAction,
@@ -98,6 +108,7 @@ export function DomainsContent({
         <DomainList
           userId={userId}
           domains={domains}
+          warmupStatuses={warmupStatuses}
           deleteDomainAction={deleteDomainAction}
           verifyNameserversAction={verifyNameserversAction}
         />

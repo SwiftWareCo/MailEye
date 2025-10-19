@@ -18,6 +18,7 @@ import { getCredentialSetupStatus } from '@/server/credentials/credentials.data'
 import {
   syncCloudflareZonesToDatabase,
 } from '@/server/cloudflare/cloudflare.actions';
+import { getDomainsWarmupStatus } from '@/server/warmup/warmup.data';
 
 export default async function DomainsPage() {
   const { needsOnboarding, user } = await requireOnboarding();
@@ -43,6 +44,9 @@ export default async function DomainsPage() {
   // Fetch user's domains from database (now includes synced zones)
   const domains = await getUserDomains(user.id);
 
+  // Fetch warmup status for all domains
+  const warmupStatuses = await getDomainsWarmupStatus(user.id);
+
   // Bind userId to Server Actions (Next.js best practice)
   const boundDeleteDomain = deleteDomainAction.bind(null, user.id);
   const boundVerifyNameservers = verifyNameserversAction.bind(null, user.id);
@@ -52,6 +56,7 @@ export default async function DomainsPage() {
     <DomainsContent
       userId={user.id}
       initialDomains={domains}
+      warmupStatuses={warmupStatuses}
       credentialStatus={credentialStatus}
       deleteDomainAction={boundDeleteDomain}
       verifyNameserversAction={boundVerifyNameservers}

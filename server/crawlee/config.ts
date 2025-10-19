@@ -5,7 +5,16 @@
  * and simple user agent rotation. No advanced features.
  */
 
-import type { ViewportConfig } from '@/lib/types/crawling';
+/**
+ * Viewport configuration for browser emulation
+ */
+export interface ViewportConfig {
+  width: number;
+  height: number;
+  deviceScaleFactor: number;
+  isMobile: boolean;
+  hasTouch: boolean;
+}
 
 /**
  * Basic crawl mode preset for Desktop/Mobile

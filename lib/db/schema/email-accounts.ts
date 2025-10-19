@@ -44,7 +44,7 @@ export const emailAccounts = pgTable("email_accounts", {
   reputationScore: varchar("reputation_score", { length: 20 }).default("unknown"), // 'excellent', 'good', 'fair', 'poor', 'unknown'
 
   // Integration
-  smartleadAccountId: uuid("smartlead_account_id"), // Link to Smartlead if synced
+  smartleadAccountId: varchar("smartlead_account_id", { length: 255 }), // Link to Smartlead if synced (stores Smartlead's integer ID as string)
 
   // Metadata
   notes: text("notes"),
