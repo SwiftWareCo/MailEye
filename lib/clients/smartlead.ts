@@ -160,6 +160,7 @@ export async function updateEmailAccount(
 
 /**
  * Gets email account warmup status
+ * @deprecated Use getEmailAccountDetails instead for full account information
  */
 export async function getEmailAccountStatus(apiKey: string, emailAccountId: string) {
   const response = await fetch(
@@ -174,6 +175,37 @@ export async function getEmailAccountStatus(apiKey: string, emailAccountId: stri
   if (!response.ok) {
     const error = await response.json();
     throw new Error(`Smartlead API error: ${error.message || response.statusText}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Gets full email account details including warmup status and settings
+ * Returns comprehensive account information from Smartlead API
+ */
+export async function getEmailAccountDetails(apiKey: string, emailAccountId: string) {
+  const response = await fetch(
+    `${SMARTLEAD_BASE_URL}/email-accounts/${emailAccountId}?api_key=${apiKey}`,
+    {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = response.statusText;
+
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.message || errorJson.error || errorText;
+    } catch {
+      errorMessage = errorText || errorMessage;
+    }
+
+    throw new Error(`Smartlead API error: ${errorMessage}`);
   }
 
   return await response.json();

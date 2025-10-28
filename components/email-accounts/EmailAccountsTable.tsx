@@ -224,14 +224,14 @@ export function EmailAccountsTable({ emailAccounts, onRefresh }: EmailAccountsTa
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  {account.dailyEmailLimit ? (
+                  {account.smartleadAccountId && account.dailyEmailLimit ? (
                     <span className="text-sm">{account.dailyEmailLimit}</span>
                   ) : (
                     <span className="text-xs text-muted-foreground">—</span>
                   )}
                 </TableCell>
                 <TableCell className="text-right">
-                  {account.deliverabilityScore ? (
+                  {account.smartleadAccountId && account.deliverabilityScore ? (
                     <span className="text-sm font-medium">{account.deliverabilityScore}%</span>
                   ) : (
                     <span className="text-xs text-muted-foreground">—</span>

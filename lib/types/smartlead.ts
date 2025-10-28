@@ -186,3 +186,34 @@ export interface CampaignEmailAccount {
   daily_limit?: number;
   [key: string]: unknown;
 }
+
+/**
+ * Smartlead email account details (from GET /email-accounts/{id})
+ * Contains full account information including warmup status and settings
+ */
+export interface SmartleadEmailAccountDetails {
+  id: number;
+  from_email: string;
+  from_name: string;
+  smtp_host: string;
+  smtp_port: number;
+  imap_host: string;
+  imap_port: number;
+  warmup_enabled: boolean;
+  max_email_per_day: number;
+  warmup_details?: {
+    status: 'ACTIVE' | 'INACTIVE' | 'PAUSED';
+    reputation_percentage: number;
+    total_sent: number;
+    spam_count: number;
+    inbox_count: number;
+    max_warmup_limit: number;
+    is_blocked: boolean;
+  };
+  custom_tracking_url?: string;
+  bcc?: string;
+  signature?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}

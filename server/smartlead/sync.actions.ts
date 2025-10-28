@@ -11,8 +11,9 @@ import { stackServerApp } from '@/stack/server';
 import { db } from '@/lib/db';
 import { emailAccounts, smartleadAccountMappings } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { listEmailAccounts } from '@/lib/clients/smartlead';
+import { listEmailAccounts, getEmailAccountDetails } from '@/lib/clients/smartlead';
 import { getSmartleadCredentials } from '@/server/credentials/credentials.data';
+import type { SmartleadEmailAccountDetails } from '@/lib/types/smartlead';
 
 interface SmartleadEmailAccount {
   id: number | string;
@@ -88,19 +89,52 @@ export async function syncSmartleadAccountAction(emailAccountId: string) {
 
     const smartleadAccountId = String(matchingAccount.id);
 
-    // Step 5: Update email_accounts table with smartleadAccountId
+    // Step 5: Fetch full account details from Smartlead to get accurate warmup data
+    let accountDetails: SmartleadEmailAccountDetails | null = null;
+    try {
+      accountDetails = await getEmailAccountDetails(smartleadCreds.apiKey, smartleadAccountId);
+    } catch (error) {
+      console.error('Failed to fetch account details from Smartlead:', error);
+      // Continue with basic sync if detailed fetch fails
+    }
+
+    // Step 6: Determine warmup status based on Smartlead data
+    const warmupEnabled = accountDetails?.warmup_enabled ?? matchingAccount.warmup_enabled ?? false;
+    const warmupActive = accountDetails?.warmup_details?.status === 'ACTIVE';
+    const dailyLimit = accountDetails?.max_email_per_day ?? matchingAccount.max_email_per_day;
+    const deliverabilityScore = accountDetails?.warmup_details?.reputation_percentage;
+
+    // Determine warmup status for our database
+    let warmupStatus: string = 'not_started';
+    let accountStatus: string = 'inactive';
+
+    if (warmupEnabled && warmupActive) {
+      warmupStatus = 'in_progress';
+      accountStatus = 'warming';
+    } else if (warmupEnabled && !warmupActive) {
+      warmupStatus = 'paused';
+      accountStatus = 'inactive';
+    }
+
+    // Step 7: Update email_accounts table with real Smartlead data
     await db
       .update(emailAccounts)
       .set({
         smartleadAccountId,
+        status: accountStatus,
+        warmupStatus,
+        dailyEmailLimit: dailyLimit || null,
+        deliverabilityScore: deliverabilityScore || null,
         updatedAt: new Date(),
       })
       .where(eq(emailAccounts.id, emailAccountId));
 
-    // Step 6: Check if mapping already exists
+    // Step 8: Check if mapping already exists
     const existingMapping = await db.query.smartleadAccountMappings.findFirst({
       where: eq(smartleadAccountMappings.emailAccountId, emailAccountId),
     });
+
+    const mappingData = accountDetails || (matchingAccount as unknown as Record<string, unknown>);
 
     if (existingMapping) {
       // Update existing mapping
@@ -111,7 +145,7 @@ export async function syncSmartleadAccountAction(emailAccountId: string) {
           smartleadEmail: matchingAccount.from_email,
           lastSyncedAt: new Date(),
           syncStatus: 'synced',
-          smartleadData: matchingAccount as unknown as Record<string, unknown>,
+          smartleadData: mappingData as Record<string, unknown>,
           updatedAt: new Date(),
         })
         .where(eq(smartleadAccountMappings.id, existingMapping.id));
@@ -123,28 +157,16 @@ export async function syncSmartleadAccountAction(emailAccountId: string) {
         smartleadEmail: matchingAccount.from_email,
         syncStatus: 'synced',
         lastSyncedAt: new Date(),
-        smartleadData: matchingAccount as unknown as Record<string, unknown>,
+        smartleadData: mappingData as Record<string, unknown>,
       });
-    }
-
-    // Step 7: Update warmup status if warmup is enabled in Smartlead
-    if (matchingAccount.warmup_enabled) {
-      await db
-        .update(emailAccounts)
-        .set({
-          status: 'warming',
-          warmupStatus: 'in_progress',
-          dailyEmailLimit: matchingAccount.max_email_per_day || 50,
-          updatedAt: new Date(),
-        })
-        .where(eq(emailAccounts.id, emailAccountId));
     }
 
     return {
       success: true,
       smartleadAccountId,
       email: matchingAccount.from_email,
-      warmupEnabled: matchingAccount.warmup_enabled,
+      warmupEnabled,
+      warmupActive,
     };
   } catch (error) {
     console.error('Failed to sync Smartlead account:', error);

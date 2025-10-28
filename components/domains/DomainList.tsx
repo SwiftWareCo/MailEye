@@ -18,20 +18,15 @@ import {
   Trash2,
   Globe,
   Calendar,
-  FileText,
-  PlayCircle,
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { DomainStatusBadge } from './DomainStatusBadge';
 import { WarmupStatusBadge } from './WarmupStatusBadge';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { ViewInstructionsModal } from './ViewInstructionsModal';
 import { useDeleteDomain } from '@/lib/hooks/use-domains';
 import { useRouter } from 'next/navigation';
 import type { Domain } from '@/lib/types/domain';
@@ -129,11 +124,11 @@ export function DomainList({
       {/* Domain list */}
       <div className="space-y-3">
         {filteredDomains.map((domain) => (
-          <Card key={domain.id} className="hover:border-primary/30 transition-colors">
+          <Card key={domain.id} className="hover:border-primary/30 transition-colors cursor-pointer" onClick={() => handleViewDetails(domain.id)}>
             <CardContent className="p-6">
               <div className="flex items-start justify-between">
                 {/* Domain info */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0" onClick={() => handleViewDetails(domain.id)}>
                   <div className="flex items-center gap-3 mb-2">
                     <h3 className="text-lg font-semibold text-white truncate">
                       {domain.domain}
@@ -189,27 +184,12 @@ export function DomainList({
                       size="sm"
                       className="ml-4"
                       disabled={deleteMutation.isPending}
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleViewDetails(domain.id)}>
-                      <PlayCircle className="h-4 w-4 mr-2" />
-                      View Details
-                    </DropdownMenuItem>
-
-                    <DropdownMenuSeparator />
-
-                    <ViewInstructionsModal domain={domain}>
-                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        View Setup Instructions
-                      </DropdownMenuItem>
-                    </ViewInstructionsModal>
-
-                    <DropdownMenuSeparator />
-
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                     <ConfirmDialog
                       trigger={
                         <div className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground text-red-400 focus:text-red-400 w-full">

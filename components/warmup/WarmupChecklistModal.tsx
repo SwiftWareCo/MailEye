@@ -44,28 +44,37 @@ interface WarmupChecklistModalProps {
   onSkip?: (accountId: string, reason: string) => Promise<void>;
 }
 
+// Core daily tasks (Days 1-7)
+// Simplified to focus on verification - Smartlead automates reply/interaction
 const DEFAULT_TASKS: Omit<ChecklistTask, 'completed'>[] = [
   {
     id: 'task-1',
-    description: 'Open Gmail and check inbox',
+    description: 'Open Gmail inbox',
   },
   {
     id: 'task-2',
-    description: 'Reply to 3-5 warmup emails naturally',
+    description: 'Verify warmup emails arrived in inbox (not spam folder)',
   },
   {
     id: 'task-3',
-    description: 'Move any spam folder emails to inbox',
-  },
-  {
-    id: 'task-4',
-    description: 'Archive/delete read warmup emails',
-  },
-  {
-    id: 'task-5',
-    description: 'Mark Smartlead senders as safe/not spam',
+    description: 'Check for any delivery issues or warnings',
   },
 ];
+
+// Additional task for Days 1-2 only (one-time setup)
+const getTasksForDay = (warmupDay: number): Omit<ChecklistTask, 'completed'>[] => {
+  const tasks = [...DEFAULT_TASKS];
+
+  // Add one-time task for first 2 days
+  if (warmupDay <= 2) {
+    tasks.push({
+      id: 'task-first-time',
+      description: 'Mark Smartlead warmup emails as safe/not spam (one-time setup)',
+    });
+  }
+
+  return tasks;
+};
 
 export function WarmupChecklistModal({
   open,
@@ -86,13 +95,14 @@ export function WarmupChecklistModal({
     }));
   };
 
-  const areAllTasksComplete = (accountId: string): boolean => {
+  const areAllTasksComplete = (accountId: string, warmupDay: number): boolean => {
     const accountTasks = taskStates[accountId] || {};
-    return DEFAULT_TASKS.every((task) => accountTasks[task.id] === true);
+    const tasksForDay = getTasksForDay(warmupDay);
+    return tasksForDay.every((task) => accountTasks[task.id] === true);
   };
 
-  const handleMarkComplete = async (accountId: string) => {
-    if (!areAllTasksComplete(accountId)) {
+  const handleMarkComplete = async (accountId: string, warmupDay: number) => {
+    if (!areAllTasksComplete(accountId, warmupDay)) {
       toast.error('Complete all tasks first', {
         description: 'Please check all tasks before marking as complete.',
       });
@@ -131,7 +141,7 @@ export function WarmupChecklistModal({
   };
 
   const getCompletedCount = () => {
-    return accounts.filter((account) => areAllTasksComplete(account.id)).length;
+    return accounts.filter((account) => areAllTasksComplete(account.id, account.warmupDay)).length;
   };
 
   return (
@@ -140,7 +150,7 @@ export function WarmupChecklistModal({
         <DialogHeader>
           <DialogTitle>Daily Warmup Checklist</DialogTitle>
           <DialogDescription>
-            Complete manual warmup tasks for optimal deliverability (Days 1-7)
+            Quick verification tasks for optimal deliverability (Days 1-7). Smartlead handles automated warmup emails and replies.
             {accounts.length > 0 && (
               <span className="ml-2">
                 • {getCompletedCount()}/{accounts.length} completed
@@ -159,7 +169,8 @@ export function WarmupChecklistModal({
               </div>
             ) : (
               accounts.map((account) => {
-                const isComplete = areAllTasksComplete(account.id);
+                const tasksForDay = getTasksForDay(account.warmupDay);
+                const isComplete = areAllTasksComplete(account.id, account.warmupDay);
                 const isLoading = loadingAccounts.has(account.id);
 
                 return (
@@ -201,7 +212,7 @@ export function WarmupChecklistModal({
 
                     {/* Task Checklist */}
                     <div className="space-y-2">
-                      {DEFAULT_TASKS.map((task) => {
+                      {tasksForDay.map((task) => {
                         const checked = taskStates[account.id]?.[task.id] || false;
 
                         return (
@@ -236,7 +247,7 @@ export function WarmupChecklistModal({
                     <div className="flex gap-2 pt-2">
                       <Button
                         size="sm"
-                        onClick={() => handleMarkComplete(account.id)}
+                        onClick={() => handleMarkComplete(account.id, account.warmupDay)}
                         disabled={!isComplete || isLoading}
                         className="flex-1"
                       >
@@ -264,7 +275,7 @@ export function WarmupChecklistModal({
         {accounts.length > 0 && (
           <div className="flex justify-between items-center pt-4 border-t">
             <p className="text-sm text-muted-foreground">
-              💡 Tip: Complete all tasks daily (Days 1-7) for optimal sender reputation
+              💡 Tip: Quick daily checks help ensure warmup runs smoothly. Smartlead automates the heavy lifting!
             </p>
             <Button onClick={() => onOpenChange(false)} variant="outline">
               Close
