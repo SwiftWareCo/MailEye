@@ -503,10 +503,9 @@ export interface GoogleWorkspaceSetupResult {
  * This action handles the entire Google Workspace setup flow in one call:
  * 1. Adds domain to Google Workspace (gets verification token from result)
  * 2. Creates verification TXT record in Cloudflare
- * 3. Waits for DNS propagation (10 seconds)
- * 4. Triggers verification with Google
- * 5. Updates domain record in database
- * 6. Starts background polling if verification is pending
+ * 3. Triggers verification with Google
+ * 4. Updates domain record in database
+ * 5. Starts background polling if verification is pending
  *
  * @param domainId - Domain ID in database
  * @param domainName - Domain name (e.g., "example.com")
@@ -642,11 +641,7 @@ export async function setupGoogleWorkspaceAction(
       })
       .where(eq(domains.id, domainId));
 
-    // Step 5: Wait for DNS propagation (10 seconds)
-    console.log(`[Google Workspace] Waiting 10 seconds for DNS propagation...`);
-    await new Promise((resolve) => setTimeout(resolve, 10000));
-
-    // Step 6: Trigger verification with Google
+    // Step 5: Trigger verification with Google
     console.log(`[Google Workspace] Triggering verification with Google...`);
     const verifyResult = await verifyDomainAction(domainName);
 
