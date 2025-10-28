@@ -27,10 +27,12 @@ import {
   LayoutDashboard,
   Globe,
   Mail,
+  Plus,
 } from 'lucide-react';
 import { OverviewTab } from './tabs/OverviewTab';
 import { DNSTab } from './tabs/DnsTab';
 import { EmailAccountsTable } from '@/components/email-accounts/EmailAccountsTable';
+import { EmailAccountCreationModal } from './EmailAccountCreationModal';
 import type { DomainDetails, TabBadgeStatus } from '@/lib/types/domain-details';
 
 interface DomainDetailViewProps {
@@ -67,9 +69,11 @@ export function DomainDetailView({
   onConfirmManualVerification,
   onAddDKIMRecord,
   onCreateDMARCRecord,
+  onCreateEmailAccount,
 }: DomainDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
+  const [isCreatingEmail, setIsCreatingEmail] = useState(false);
 
   const { domain, setupStatus } = details;
 
@@ -367,12 +371,27 @@ export function DomainDetailView({
                       Manage email accounts and warmup settings for {domain.domain}
                     </p>
                   </div>
+                  {onCreateEmailAccount && (
+                    <Button onClick={() => setIsCreatingEmail(true)}>
+                      <Plus className='h-4 w-4 mr-2' />
+                      Create Email Account
+                    </Button>
+                  )}
                 </div>
 
                 <EmailAccountsTable
                   emailAccounts={details.emailAccounts}
                   onRefresh={() => window.location.reload()}
                 />
+
+                {onCreateEmailAccount && (
+                  <EmailAccountCreationModal
+                    open={isCreatingEmail}
+                    onOpenChange={setIsCreatingEmail}
+                    domainName={domain.domain}
+                    createEmailAccountAction={onCreateEmailAccount}
+                  />
+                )}
               </div>
             </TabsContent>
           </CardContent>
