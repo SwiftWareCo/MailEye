@@ -26,11 +26,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { DomainStatusBadge } from './DomainStatusBadge';
 import { WarmupStatusBadge } from './WarmupStatusBadge';
+import { DomainSetupCard } from './DomainSetupCard';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useDeleteDomain } from '@/lib/hooks/use-domains';
 import { useRouter } from 'next/navigation';
 import type { Domain } from '@/lib/types/domain';
 import type { NameserverVerificationResult } from '@/server/domain/nameserver-verifier';
+import type { SetupCompletionStatus } from '@/lib/types/domain-details';
 
 interface DomainWarmupStatus {
   domainId: string;
@@ -44,6 +46,7 @@ interface DomainListProps {
   userId: string;
   domains: Domain[];
   warmupStatuses: DomainWarmupStatus[];
+  setupStatuses: Map<string, SetupCompletionStatus>;
   deleteDomainAction: (domainId: string) => Promise<{ success: boolean; error?: string }>;
   verifyNameserversAction?: (domainId: string) => Promise<NameserverVerificationResult>;
 }
@@ -52,6 +55,7 @@ export function DomainList({
   userId,
   domains,
   warmupStatuses,
+  setupStatuses,
   deleteDomainAction,
 }: DomainListProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -174,6 +178,18 @@ export function DomainList({
                       {domain.notes}
                     </p>
                   )}
+
+                  {(() => {
+                    const setupStatus = setupStatuses.get(domain.id);
+                    if (setupStatus) {
+                      return (
+                        <div className="mt-3 pt-3 border-t border-border">
+                          <DomainSetupCard setupStatus={setupStatus} compact={true} />
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
 
                 {/* Actions menu */}

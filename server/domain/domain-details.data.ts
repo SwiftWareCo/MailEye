@@ -126,10 +126,10 @@ function calculateSetupStatus(
 
   // Email accounts tab status
   const accountCount = emailAccounts.length;
-  const provisionedCount = emailAccounts.filter(
-    (a) => a.status !== 'inactive'
+  const verifiedCount = emailAccounts.filter(
+    (a) => a.isVerified
   ).length;
-  const emailComplete = accountCount > 0 && provisionedCount > 0;
+  const emailComplete = accountCount > 0 && verifiedCount > 0;
 
   // Warmup tab status
   const smartleadConnected = emailAccounts.some((a) => a.smartleadAccountId !== null);
@@ -186,8 +186,8 @@ function calculateSetupStatus(
     emailAccounts: {
       isComplete: emailComplete,
       accountCount,
-      provisionedCount,
-      needsProvisioning: accountCount === 0 || provisionedCount < accountCount,
+      provisionedCount: verifiedCount,
+      needsProvisioning: accountCount === 0 || verifiedCount < accountCount,
     },
     warmup: {
       isComplete: warmupComplete,
@@ -241,5 +241,32 @@ export async function getDomainEmailAccounts(
   } catch (error) {
     console.error('Error fetching email accounts:', error);
     throw new Error('Failed to fetch email accounts');
+  }
+}
+
+/**
+ * Get setup status for multiple domains (batch)
+ *
+ * @param domainIds - Array of domain IDs
+ * @param userId - User ID for authorization
+ * @returns Map of domainId to SetupCompletionStatus
+ */
+export async function getDomainSetupStatuses(
+  domainIds: string[],
+  userId: string
+): Promise<Map<string, SetupCompletionStatus>> {
+  const statusMap = new Map<string, SetupCompletionStatus>();
+
+  try {
+    for (const domainId of domainIds) {
+      const details = await getDomainDetails(domainId, userId);
+      if (details) {
+        statusMap.set(domainId, details.setupStatus);
+      }
+    }
+    return statusMap;
+  } catch (error) {
+    console.error('Error fetching domain setup statuses:', error);
+    return statusMap;
   }
 }

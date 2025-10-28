@@ -16,6 +16,7 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { Domain, DomainConnectionInput, DomainConnectionResult } from '@/lib/types/domain';
 import type { NameserverVerificationResult } from '@/server/domain/nameserver-verifier';
+import type { SetupCompletionStatus } from '@/lib/types/domain-details';
 
 interface CredentialStatus {
   cloudflare: boolean;
@@ -35,6 +36,7 @@ interface DomainsContentProps {
   userId: string;
   initialDomains: Domain[];
   warmupStatuses: DomainWarmupStatus[];
+  setupStatuses: Map<string, SetupCompletionStatus>;
   credentialStatus: CredentialStatus;
   deleteDomainAction: (domainId: string) => Promise<{ success: boolean; error?: string }>;
   verifyNameserversAction: (domainId: string) => Promise<NameserverVerificationResult>;
@@ -45,6 +47,7 @@ export function DomainsContent({
   userId,
   initialDomains,
   warmupStatuses,
+  setupStatuses,
   credentialStatus,
   deleteDomainAction,
   verifyNameserversAction,
@@ -109,6 +112,7 @@ export function DomainsContent({
           userId={userId}
           domains={domains}
           warmupStatuses={warmupStatuses}
+          setupStatuses={setupStatuses}
           deleteDomainAction={deleteDomainAction}
           verifyNameserversAction={verifyNameserversAction}
         />

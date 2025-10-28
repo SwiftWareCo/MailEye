@@ -30,6 +30,7 @@ export interface EmailAccountInfo {
   email: string;
   displayName: string | null;
   status: string;
+  isVerified: boolean;
   warmupStatus: string | null;
   warmupDayCount: number | null;
   dailyEmailLimit: number | null;

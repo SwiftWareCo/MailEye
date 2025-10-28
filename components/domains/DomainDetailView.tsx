@@ -54,11 +54,6 @@ interface DomainDetailViewProps {
     hoursRemaining?: number;
     recordId?: string;
   }>;
-  onCreateEmailAccount?: (
-    emailPrefix: string,
-    displayName: string,
-    count?: number
-  ) => Promise<{ success: boolean; error?: string; accounts?: unknown[] }>;
   onConnectToSmartlead?: (emailAccountId: string) => void;
 }
 
@@ -69,7 +64,6 @@ export function DomainDetailView({
   onConfirmManualVerification,
   onAddDKIMRecord,
   onCreateDMARCRecord,
-  onCreateEmailAccount,
 }: DomainDetailViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('overview');
@@ -371,12 +365,10 @@ export function DomainDetailView({
                       Manage email accounts and warmup settings for {domain.domain}
                     </p>
                   </div>
-                  {onCreateEmailAccount && (
-                    <Button onClick={() => setIsCreatingEmail(true)}>
-                      <Plus className='h-4 w-4 mr-2' />
-                      Create Email Account
-                    </Button>
-                  )}
+                  <Button onClick={() => setIsCreatingEmail(true)}>
+                    <Plus className='h-4 w-4 mr-2' />
+                    Create Email Account
+                  </Button>
                 </div>
 
                 <EmailAccountsTable
@@ -384,14 +376,12 @@ export function DomainDetailView({
                   onRefresh={() => window.location.reload()}
                 />
 
-                {onCreateEmailAccount && (
-                  <EmailAccountCreationModal
-                    open={isCreatingEmail}
-                    onOpenChange={setIsCreatingEmail}
-                    domainName={domain.domain}
-                    createEmailAccountAction={onCreateEmailAccount}
-                  />
-                )}
+                <EmailAccountCreationModal
+                  open={isCreatingEmail}
+                  onOpenChange={setIsCreatingEmail}
+                  domainId={domain.id}
+                  domainName={domain.domain}
+                />
               </div>
             </TabsContent>
           </CardContent>

@@ -23,7 +23,7 @@ import { batchCreateEmailAccountsAction } from '@/server/email/batch-email.actio
  *   });
  * };
  */
-export function useEmailProvisioning() {
+export function useEmailProvisioning(domainId?: string) {
   const queryClient = useQueryClient();
 
   const createAccount = useMutation({
@@ -32,6 +32,11 @@ export function useEmailProvisioning() {
       if (data.success) {
         // Invalidate email accounts query when new account is created
         queryClient.invalidateQueries({ queryKey: ['email-accounts'] });
+
+        // Invalidate domain setup status for this domain
+        if (domainId) {
+          queryClient.invalidateQueries({ queryKey: ['domain-setup-status', domainId] });
+        }
       }
     },
   });
@@ -62,7 +67,7 @@ export function useEmailProvisioning() {
  *   });
  * };
  */
-export function useBatchEmailProvisioning() {
+export function useBatchEmailProvisioning(domainId?: string) {
   const queryClient = useQueryClient();
 
   const batchCreate = useMutation({
@@ -71,6 +76,11 @@ export function useBatchEmailProvisioning() {
       if (data.success || data.successfulAccounts > 0) {
         // Invalidate email accounts query when any account is created
         queryClient.invalidateQueries({ queryKey: ['email-accounts'] });
+
+        // Invalidate domain setup status for this domain
+        if (domainId) {
+          queryClient.invalidateQueries({ queryKey: ['domain-setup-status', domainId] });
+        }
       }
     },
   });

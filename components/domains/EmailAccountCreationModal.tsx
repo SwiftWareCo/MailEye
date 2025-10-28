@@ -10,6 +10,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -22,27 +23,23 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, CheckCircle2, Mail, Plus, Trash2, Sparkles } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { batchCreateEmailAccountsAction } from '@/server/email/email.actions';
+import { toast } from 'sonner';
 
 interface EmailAccountCreationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  domainId: string;
   domainName: string;
-  createEmailAccountAction: (
-    emailPrefix: string,
-    displayName: string,
-    count?: number,
-    customAccounts?: Array<{ username: string; displayName: string }>
-  ) => Promise<{ success: boolean; error?: string; accounts?: unknown[] }>;
 }
 
 export function EmailAccountCreationModal({
   open,
   onOpenChange,
+  domainId,
   domainName,
-  createEmailAccountAction,
 }: EmailAccountCreationModalProps) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -86,82 +83,98 @@ export function EmailAccountCreationModal({
     setLoading(true);
     setError(null);
 
-    // Custom names mode - pass array of accounts
-    if (customNamesMode) {
-      // Filter out empty accounts
-      const filledAccounts = customAccounts.filter(
-        (acc) => acc.username.trim() && acc.displayName.trim()
-      );
+    try {
+      // Custom names mode - pass array of accounts
+      if (customNamesMode) {
+        // Filter out empty accounts
+        const filledAccounts = customAccounts.filter(
+          (acc) => acc.username.trim() && acc.displayName.trim()
+        );
 
-      if (filledAccounts.length === 0) {
-        setError('At least one account must have a username and display name');
+        if (filledAccounts.length === 0) {
+          setError('At least one account must have a username and display name');
+          setLoading(false);
+          return;
+        }
+
+        // Validate usernames (no spaces, no special chars except dots/hyphens)
+        const invalidUsernames = filledAccounts.filter((acc) =>
+          /[^a-zA-Z0-9.-]/.test(acc.username)
+        );
+
+        if (invalidUsernames.length > 0) {
+          setError('Usernames can only contain letters, numbers, dots, and hyphens');
+          setLoading(false);
+          return;
+        }
+
+        // Check for duplicate usernames
+        const usernames = filledAccounts.map((acc) => acc.username.toLowerCase());
+        const uniqueUsernames = new Set(usernames);
+        if (usernames.length !== uniqueUsernames.size) {
+          setError('Duplicate usernames detected. Each username must be unique.');
+          setLoading(false);
+          return;
+        }
+
+        // Call batch creation action with custom accounts
+        const result = await batchCreateEmailAccountsAction({
+          domainId,
+          emailPrefix: '',
+          displayNamePrefix: '',
+          count: filledAccounts.length,
+          customAccounts: filledAccounts,
+        });
+
+        if (result.success || result.successfulAccounts > 0) {
+          setSuccess(true);
+          // Invalidate caches after success
+          queryClient.invalidateQueries({ queryKey: ['email-accounts'] });
+          queryClient.invalidateQueries({ queryKey: ['domain-setup-status', domainId] });
+          toast.success('Email account(s) created successfully!');
+
+          setTimeout(() => {
+            handleOpenChange(false);
+          }, 1500);
+        } else {
+          setError(result.results[0]?.error || 'Failed to create email account(s)');
+          toast.error('Failed to create email accounts');
+        }
+
         setLoading(false);
         return;
       }
 
-      // Validate usernames (no spaces, no special chars except dots/hyphens)
-      const invalidUsernames = filledAccounts.filter((acc) =>
-        /[^a-zA-Z0-9.-]/.test(acc.username)
-      );
+      // Regular mode (single or batch with prefix)
+      const result = await batchCreateEmailAccountsAction({
+        domainId,
+        emailPrefix: emailPrefix.trim(),
+        displayNamePrefix: displayName.trim(),
+        count: batchMode ? batchCount : 1,
+      });
 
-      if (invalidUsernames.length > 0) {
-        setError('Usernames can only contain letters, numbers, dots, and hyphens');
-        setLoading(false);
-        return;
-      }
-
-      // Check for duplicate usernames
-      const usernames = filledAccounts.map((acc) => acc.username.toLowerCase());
-      const uniqueUsernames = new Set(usernames);
-      if (usernames.length !== uniqueUsernames.size) {
-        setError('Duplicate usernames detected. Each username must be unique.');
-        setLoading(false);
-        return;
-      }
-
-      // Pass custom accounts array
-      const result = await createEmailAccountAction(
-        '', // Not used in custom mode
-        '', // Not used in custom mode
-        undefined,
-        filledAccounts.map((acc) => ({
-          username: acc.username.trim(),
-          displayName: acc.displayName.trim(),
-        }))
-      );
-
-      if (result.success) {
+      if (result.success || result.successfulAccounts > 0) {
         setSuccess(true);
+        // Invalidate caches after success
+        queryClient.invalidateQueries({ queryKey: ['email-accounts'] });
+        queryClient.invalidateQueries({ queryKey: ['domain-setup-status', domainId] });
+        toast.success(`${result.successfulAccounts} email account(s) created successfully!`);
+
         setTimeout(() => {
           handleOpenChange(false);
-          router.refresh();
-        }, 2000);
+        }, 1500);
       } else {
-        setError(result.error || 'Failed to create email account(s)');
+        setError(result.results[0]?.error || 'Failed to create email account(s)');
+        toast.error('Failed to create email accounts');
       }
 
       setLoading(false);
-      return;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(errorMessage);
+      toast.error('Error creating email accounts', { description: errorMessage });
+      setLoading(false);
     }
-
-    // Regular mode (single or batch with prefix)
-    const result = await createEmailAccountAction(
-      emailPrefix.trim(),
-      displayName.trim(),
-      batchMode ? batchCount : undefined
-    );
-
-    if (result.success) {
-      setSuccess(true);
-      setTimeout(() => {
-        handleOpenChange(false);
-        router.refresh();
-      }, 2000);
-    } else {
-      setError(result.error || 'Failed to create email account(s)');
-    }
-
-    setLoading(false);
   };
 
   const addCustomAccount = () => {

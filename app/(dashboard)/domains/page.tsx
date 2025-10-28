@@ -19,6 +19,7 @@ import {
   syncCloudflareZonesToDatabase,
 } from '@/server/cloudflare/cloudflare.actions';
 import { getDomainsWarmupStatus } from '@/server/warmup/warmup.data';
+import { getDomainSetupStatuses } from '@/server/domain/domain-details.data';
 
 export default async function DomainsPage() {
   const { needsOnboarding, user } = await requireOnboarding();
@@ -47,6 +48,12 @@ export default async function DomainsPage() {
   // Fetch warmup status for all domains
   const warmupStatuses = await getDomainsWarmupStatus(user.id);
 
+  // Fetch setup status for all domains
+  const setupStatuses = await getDomainSetupStatuses(
+    domains.map((d) => d.id),
+    user.id
+  );
+
   // Bind userId to Server Actions (Next.js best practice)
   const boundDeleteDomain = deleteDomainAction.bind(null, user.id);
   const boundVerifyNameservers = verifyNameserversAction.bind(null, user.id);
@@ -57,6 +64,7 @@ export default async function DomainsPage() {
       userId={user.id}
       initialDomains={domains}
       warmupStatuses={warmupStatuses}
+      setupStatuses={setupStatuses}
       credentialStatus={credentialStatus}
       deleteDomainAction={boundDeleteDomain}
       verifyNameserversAction={boundVerifyNameservers}

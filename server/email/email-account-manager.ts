@@ -136,7 +136,8 @@ export async function saveEmailAccount(
         imapPort: params.credentials.imap.port,
         imapUsername: params.credentials.imap.username,
         status: 'inactive', // Default status
-        isVerified: false,
+        isVerified: true, // Mark as verified since Google Workspace creation succeeded
+        lastVerifiedAt: new Date(),
         warmupStatus: 'not_started',
         warmupDayCount: 0,
         dailyEmailLimit: 10,
