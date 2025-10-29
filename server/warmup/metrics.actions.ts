@@ -22,6 +22,21 @@ interface WarmupMetrics {
   deliverability_rate: number;
 }
 
+interface SmartleadStatsResponse {
+  id: number;
+  sent_count: string | number;
+  spam_count: string | number;
+  warmup_email_received_count: string | number;
+  inbox_count: string | number;
+  stats_by_date: Array<{
+    date: string;
+    sent_count: number;
+    reply_count: number;
+    save_from_spam_count: number;
+    id: number;
+  }>;
+}
+
 interface WarmupHealthAssessment {
   overall: 'healthy' | 'warning' | 'critical';
   inboxPlacement: number;
@@ -77,10 +92,16 @@ export async function getEmailAccountWarmupMetricsAction(emailAccountId: string)
     }
 
     // Fetch warmup stats from Smartlead (last 7 days)
-    const stats = await getWarmupStats(smartleadCreds.apiKey, mapping.smartleadEmailAccountId);
+    const statsResponse = await getWarmupStats(smartleadCreds.apiKey, mapping.smartleadEmailAccountId);
+
+
+    // Transform Smartlead API response to WarmupMetrics format
+    const stats = transformSmartleadStatsToMetrics(statsResponse as SmartleadStatsResponse);
+
 
     // Calculate health assessment
     const healthAssessment = calculateHealthAssessment(stats);
+
 
     return {
       success: true,
@@ -109,6 +130,34 @@ export async function refreshWarmupMetricsAction(emailAccountId: string) {
 }
 
 /**
+ * Transform Smartlead API response to WarmupMetrics format
+ */
+function transformSmartleadStatsToMetrics(response: SmartleadStatsResponse): WarmupMetrics[] {
+  if (!response.stats_by_date || !Array.isArray(response.stats_by_date)) {
+    return [];
+  }
+
+  return response.stats_by_date.map((dayStats) => {
+    const sent = dayStats.sent_count || 0;
+    const replied = dayStats.reply_count || 0;
+    const savedFromSpam = dayStats.save_from_spam_count || 0;
+
+    // Calculate deliverability rate: (emails in inbox / emails sent) * 100
+    // If no emails sent, deliverability is 0
+    const deliverability_rate = sent > 0 ? (savedFromSpam / sent) * 100 : 0;
+
+    return {
+      date: dayStats.date,
+      sent,
+      delivered: sent - (sent - savedFromSpam), // Approximation: delivered = sent - bounced
+      bounced: sent - savedFromSpam, // Approximation: bounced = sent - in_inbox
+      replied,
+      deliverability_rate,
+    };
+  });
+}
+
+/**
  * Calculate health assessment from warmup metrics
  */
 function calculateHealthAssessment(metrics: WarmupMetrics[]): WarmupHealthAssessment {
@@ -122,6 +171,7 @@ function calculateHealthAssessment(metrics: WarmupMetrics[]): WarmupHealthAssess
       recommendations: ['Wait for warmup emails to be sent'],
     };
   }
+
 
   // Calculate averages from last 7 days
   const avgDeliverability = metrics.reduce((sum, m) => sum + m.deliverability_rate, 0) / metrics.length;
@@ -191,4 +241,72 @@ function calculateHealthAssessment(metrics: WarmupMetrics[]): WarmupHealthAssess
     issues,
     recommendations,
   };
+}
+
+/**
+ * Get Email Account Warmup Data (Combined)
+ *
+ * Fetches both metrics and settings in a single server action call
+ * This is more efficient than making two separate requests
+ *
+ * @param emailAccountId - Email account ID
+ * @returns Combined metrics and settings data
+ */
+export async function getEmailAccountWarmupDataAction(
+  emailAccountId: string
+): Promise<{
+  success: boolean;
+  metrics?: Array<{
+    date: string;
+    sent: number;
+    delivered: number;
+    bounced: number;
+    replied: number;
+    deliverability_rate: number;
+  }>;
+  health?: WarmupHealthAssessment;
+  settings?: {
+    warmupEnabled: boolean;
+    maxEmailPerDay: number;
+    totalWarmupPerDay: number;
+    dailyRampup: number;
+    replyRatePercentage: number;
+  };
+  error?: string;
+}> {
+  const user = await stackServerApp.getUser();
+  if (!user) {
+    return { success: false, error: 'Authentication required' };
+  }
+
+  try {
+    // Import settings action
+    const { getWarmupSettingsAction } = await import('./settings.actions');
+
+    // Fetch both metrics and settings in parallel
+    const [metricsResult, settingsResult] = await Promise.all([
+      getEmailAccountWarmupMetricsAction(emailAccountId),
+      getWarmupSettingsAction(emailAccountId),
+    ]);
+
+    if (!metricsResult.success) {
+      return {
+        success: false,
+        error: metricsResult.error,
+      };
+    }
+
+    return {
+      success: true,
+      metrics: metricsResult.metrics,
+      health: metricsResult.health,
+      settings: settingsResult.success ? settingsResult.settings : undefined,
+    };
+  } catch (error) {
+    console.error('Failed to fetch warmup data:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
 }

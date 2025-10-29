@@ -6,7 +6,8 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,11 +38,10 @@ import {
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  getEmailAccountWarmupMetricsAction,
   refreshWarmupMetricsAction,
+  getEmailAccountWarmupDataAction,
 } from '@/server/warmup/metrics.actions';
 import {
-  getWarmupSettingsAction,
   updateWarmupSettingsAction,
 } from '@/server/warmup/settings.actions';
 import { Label } from '@/components/ui/label';
@@ -53,6 +53,7 @@ interface EmailAccount {
   email: string;
   createdAt: Date;
   smartleadAccountId: string | null;
+  warmupStartedAt: Date | null;
 }
 
 interface EmailAccountMetricsProps {
@@ -62,26 +63,7 @@ interface EmailAccountMetricsProps {
 
 export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [metrics, setMetrics] = useState<Array<{
-    date: string;
-    sent: number;
-    delivered: number;
-    bounced: number;
-    replied: number;
-    deliverability_rate: number;
-  }>>([]);
-  const [health, setHealth] = useState<{
-    overall: 'healthy' | 'warning' | 'critical';
-    inboxPlacement: number;
-    bounceRate: number;
-    replyRate: number;
-    issues: string[];
-    recommendations: string[];
-  } | null>(null);
-
-  // Warmup settings state
+  const queryClient = useQueryClient();
   const [warmupSettings, setWarmupSettings] = useState<{
     warmupEnabled: boolean;
     maxEmailPerDay: number;
@@ -89,99 +71,106 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
     dailyRampup: number;
     replyRatePercentage: number;
   } | null>(null);
-  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
-  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [initialSettings, setInitialSettings] = useState<typeof warmupSettings>(null);
 
-  // Calculate warmup day
-  const warmupDay = Math.floor(
-    (new Date().getTime() - new Date(account.createdAt).getTime()) / (1000 * 60 * 60 * 24)
-  ) + 1;
+  // Fetch metrics and settings with combined query (more efficient than 2 separate requests)
+  const {
+    data: warmupData,
+    isPending: isLoadingMetrics,
+  } = useQuery({
+    queryKey: ['email-account-warmup-data', account.id],
+    queryFn: () => getEmailAccountWarmupDataAction(account.id),
+    enabled: !!account.id,
+    staleTime: 60000, // Cache for 1 minute to avoid refetch on remount
+  });
 
-  // Fetch metrics and settings on mount
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
+  const metrics = warmupData?.metrics || [];
+  const health = warmupData?.health || null;
 
-      // Fetch metrics
-      const metricsResult = await getEmailAccountWarmupMetricsAction(account.id);
-      if (metricsResult.success) {
-        setMetrics(metricsResult.metrics || []);
-        setHealth(metricsResult.health || null);
+  // Update local state when settings are fetched
+  if (warmupData?.success && warmupData.settings && !warmupSettings) {
+    setWarmupSettings(warmupData.settings);
+    setInitialSettings(warmupData.settings);
+  }
+
+  // Calculate unsaved changes
+  const hasUnsavedChanges = warmupSettings && initialSettings
+    ? JSON.stringify(warmupSettings) !== JSON.stringify(initialSettings)
+    : false;
+
+  // Refresh metrics mutation
+  const {
+    mutate: refreshMetrics,
+    isPending: isRefreshing,
+  } = useMutation({
+    mutationFn: () => refreshWarmupMetricsAction(account.id),
+    onSuccess: (result) => {
+      if (result.success) {
+        // Invalidate and refetch metrics query
+        queryClient.invalidateQueries({ queryKey: ['email-account-metrics', account.id] });
+        toast.success('Metrics refreshed', {
+          description: 'Latest data fetched from Smartlead',
+        });
       } else {
-        toast.error('Failed to load metrics', {
-          description: metricsResult.error,
+        toast.error('Refresh failed', {
+          description: result.error,
         });
       }
-
-      // Fetch warmup settings if connected
-      if (account.smartleadAccountId) {
-        setIsLoadingSettings(true);
-        const settingsResult = await getWarmupSettingsAction(account.id);
-        if (settingsResult.success && settingsResult.settings) {
-          setWarmupSettings(settingsResult.settings);
-        }
-        setIsLoadingSettings(false);
-      }
-
-      setIsLoading(false);
-    };
-
-    fetchData();
-  }, [account.id, account.smartleadAccountId]);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    const result = await refreshWarmupMetricsAction(account.id);
-
-    if (result.success) {
-      setMetrics(result.metrics || []);
-      setHealth(result.health || null);
-      toast.success('Metrics refreshed', {
-        description: 'Latest data fetched from Smartlead',
-      });
-    } else {
+    },
+    onError: () => {
       toast.error('Refresh failed', {
-        description: result.error,
+        description: 'Unable to refresh metrics',
       });
-    }
+    },
+  });
 
-    setIsRefreshing(false);
+  // Save settings mutation
+  const {
+    mutate: saveSettings,
+    isPending: isSavingSettings,
+  } = useMutation({
+    mutationFn: (settings: typeof warmupSettings) =>
+      updateWarmupSettingsAction(account.id, settings!),
+    onSuccess: () => {
+      // Clear unsaved indicator by updating initialSettings
+      setInitialSettings(warmupSettings);
+      toast.success('Settings saved', {
+        description: 'Warmup settings updated in Smartlead',
+      });
+    },
+    onError: (error) => {
+      toast.error('Failed to save settings', {
+        description: error instanceof Error ? error.message : 'Please try again',
+      });
+    },
+  });
+
+  // Calculate warmup day - only if warmup has started
+  const warmupDay = account.warmupStartedAt
+    ? Math.floor(
+        (new Date().getTime() - new Date(account.warmupStartedAt).getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1
+    : null;
+
+  const handleRefresh = () => {
+    refreshMetrics();
   };
 
-  const handleSaveSettings = async () => {
+  const handleSaveSettings = () => {
     if (!warmupSettings) return;
-
-    setIsSavingSettings(true);
-    try {
-      const result = await updateWarmupSettingsAction(account.id, warmupSettings);
-
-      if (result.success) {
-        toast.success('Settings saved', {
-          description: 'Warmup settings updated in Smartlead',
-        });
-      } else {
-        toast.error('Failed to save settings', {
-          description: result.error || 'Please try again',
-        });
-      }
-    } catch (error) {
-      console.error('Save settings error:', error);
-      toast.error('An error occurred', {
-        description: 'Failed to save warmup settings',
-      });
-    } finally {
-      setIsSavingSettings(false);
-    }
+    saveSettings(warmupSettings);
   };
 
   const handleResetSettings = () => {
-    setWarmupSettings({
+    const defaults = {
       warmupEnabled: true,
-      maxEmailPerDay: 50,
-      totalWarmupPerDay: 40,
-      dailyRampup: 5,
-      replyRatePercentage: 30,
-    });
+      maxEmailPerDay: 50,          // Industry Recommendation (per cold-email-best-practices.md)
+      totalWarmupPerDay: 25,       // Conservative Start (per cold-email-best-practices.md)
+      dailyRampup: 5,              // Gradual increase
+      replyRatePercentage: 30,     // Target 30% reply rate during warmup
+    };
+    setWarmupSettings(defaults);
+    setInitialSettings(defaults);
     toast.info('Settings reset to defaults');
   };
 
@@ -230,7 +219,7 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
             </div>
             <p className="text-muted-foreground mt-1">
               <Calendar className="h-4 w-4 inline mr-1" />
-              Day {warmupDay} of warmup
+              {warmupDay ? `Day ${warmupDay} of warmup` : 'Warmup not started - Set up Smartlead to begin'}
             </p>
           </div>
         </div>
@@ -239,7 +228,8 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
           <Button
             variant="outline"
             onClick={handleRefresh}
-            disabled={isRefreshing || !account.smartleadAccountId}
+            disabled={isRefreshing || !account.smartleadAccountId || hasUnsavedChanges}
+            title={hasUnsavedChanges ? 'Save changes before refreshing' : 'Refresh warmup metrics'}
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh Metrics
@@ -273,7 +263,7 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
       )}
 
       {/* Warmup Settings Card */}
-      {account.smartleadAccountId && warmupSettings && !isLoadingSettings && (
+      {account.smartleadAccountId && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -281,135 +271,157 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="h-5 w-5" />
                   Warmup Settings
+                  {warmupSettings && hasUnsavedChanges && (
+                    <Badge variant="secondary" className="ml-auto">
+                      Unsaved Changes
+                    </Badge>
+                  )}
                 </CardTitle>
                 <CardDescription>
                   Configure warmup parameters for this email account
                 </CardDescription>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResetSettings}
-                  disabled={isSavingSettings}
-                >
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  Reset
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSaveSettings}
-                  disabled={isSavingSettings}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSavingSettings ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
+              {warmupSettings && (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetSettings}
+                    disabled={isSavingSettings}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Reset
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveSettings}
+                    disabled={isSavingSettings || !hasUnsavedChanges}
+                    title={!hasUnsavedChanges ? 'No changes to save' : 'Save warmup settings'}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    {isSavingSettings ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Warmup Enabled Toggle */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="warmup-enabled">Warmup Enabled</Label>
-                  <Switch
-                    id="warmup-enabled"
-                    checked={warmupSettings.warmupEnabled}
-                    onCheckedChange={(checked) =>
-                      setWarmupSettings({ ...warmupSettings, warmupEnabled: checked })
-                    }
-                  />
+            {!warmupSettings ? (
+              // Loading skeleton
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="h-4 w-32 bg-muted rounded animate-pulse" />
+                    <div className="h-10 w-full bg-muted rounded animate-pulse" />
+                    <div className="h-3 w-48 bg-muted rounded animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              // Loaded form
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Warmup Enabled Toggle */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="warmup-enabled">Warmup Enabled</Label>
+                    <Switch
+                      id="warmup-enabled"
+                      checked={warmupSettings.warmupEnabled}
+                      onCheckedChange={(checked) =>
+                        setWarmupSettings({ ...warmupSettings, warmupEnabled: checked })
+                      }
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Enable or disable warmup for this account
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Enable or disable warmup for this account
-                </p>
-              </div>
 
-              {/* Max Emails Per Day */}
-              <div className="space-y-2">
-                <Label htmlFor="max-email-per-day">
-                  Max Emails Per Day: {warmupSettings.maxEmailPerDay}
-                </Label>
-                <Slider
-                  id="max-email-per-day"
-                  min={10}
-                  max={200}
-                  step={5}
-                  value={[warmupSettings.maxEmailPerDay]}
-                  onValueChange={([value]) =>
-                    setWarmupSettings({ ...warmupSettings, maxEmailPerDay: value })
-                  }
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Maximum total emails (warmup + campaigns) per day
-                </p>
-              </div>
+                {/* Max Emails Per Day */}
+                <div className="space-y-2">
+                  <Label htmlFor="max-email-per-day">
+                    Max Emails Per Day: {warmupSettings.maxEmailPerDay}
+                  </Label>
+                  <Slider
+                    id="max-email-per-day"
+                    min={10}
+                    max={200}
+                    step={5}
+                    value={[warmupSettings.maxEmailPerDay]}
+                    onValueChange={([value]) =>
+                      setWarmupSettings({ ...warmupSettings, maxEmailPerDay: value })
+                    }
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Maximum total emails (warmup + campaigns) per day
+                  </p>
+                </div>
 
-              {/* Total Warmup Per Day */}
-              <div className="space-y-2">
-                <Label htmlFor="total-warmup-per-day">
-                  Warmup Emails Per Day: {warmupSettings.totalWarmupPerDay}
-                </Label>
-                <Slider
-                  id="total-warmup-per-day"
-                  min={5}
-                  max={100}
-                  step={5}
-                  value={[warmupSettings.totalWarmupPerDay]}
-                  onValueChange={([value]) =>
-                    setWarmupSettings({ ...warmupSettings, totalWarmupPerDay: value })
-                  }
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Number of warmup emails to send daily
-                </p>
-              </div>
+                {/* Total Warmup Per Day */}
+                <div className="space-y-2">
+                  <Label htmlFor="total-warmup-per-day">
+                    Warmup Emails Per Day: {warmupSettings.totalWarmupPerDay}
+                  </Label>
+                  <Slider
+                    id="total-warmup-per-day"
+                    min={5}
+                    max={100}
+                    step={5}
+                    value={[warmupSettings.totalWarmupPerDay]}
+                    onValueChange={([value]) =>
+                      setWarmupSettings({ ...warmupSettings, totalWarmupPerDay: value })
+                    }
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Number of warmup emails to send daily
+                  </p>
+                </div>
 
-              {/* Daily Rampup */}
-              <div className="space-y-2">
-                <Label htmlFor="daily-rampup">
-                  Daily Rampup: +{warmupSettings.dailyRampup} emails/day
-                </Label>
-                <Slider
-                  id="daily-rampup"
-                  min={1}
-                  max={20}
-                  step={1}
-                  value={[warmupSettings.dailyRampup]}
-                  onValueChange={([value]) =>
-                    setWarmupSettings({ ...warmupSettings, dailyRampup: value })
-                  }
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Increase warmup volume by this amount each day
-                </p>
-              </div>
+                {/* Daily Rampup */}
+                <div className="space-y-2">
+                  <Label htmlFor="daily-rampup">
+                    Daily Rampup: +{warmupSettings.dailyRampup} emails/day
+                  </Label>
+                  <Slider
+                    id="daily-rampup"
+                    min={1}
+                    max={20}
+                    step={1}
+                    value={[warmupSettings.dailyRampup]}
+                    onValueChange={([value]) =>
+                      setWarmupSettings({ ...warmupSettings, dailyRampup: value })
+                    }
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Increase warmup volume by this amount each day
+                  </p>
+                </div>
 
-              {/* Reply Rate Percentage */}
-              <div className="space-y-2">
-                <Label htmlFor="reply-rate">
-                  Reply Rate Target: {warmupSettings.replyRatePercentage}%
-                </Label>
-                <Slider
-                  id="reply-rate"
-                  min={10}
-                  max={100}
-                  step={5}
-                  value={[warmupSettings.replyRatePercentage]}
-                  onValueChange={([value]) =>
-                    setWarmupSettings({ ...warmupSettings, replyRatePercentage: value })
-                  }
-                  className="w-full"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Target percentage of warmup emails to reply to
-                </p>
+                {/* Reply Rate Percentage */}
+                <div className="space-y-2">
+                  <Label htmlFor="reply-rate">
+                    Reply Rate Target: {warmupSettings.replyRatePercentage}%
+                  </Label>
+                  <Slider
+                    id="reply-rate"
+                    min={10}
+                    max={100}
+                    step={5}
+                    value={[warmupSettings.replyRatePercentage]}
+                    onValueChange={([value]) =>
+                      setWarmupSettings({ ...warmupSettings, replyRatePercentage: value })
+                    }
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Target percentage of warmup emails to reply to
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -561,7 +573,7 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
         </div>
       )}
 
-      {isLoading && account.smartleadAccountId && (
+      {isLoadingMetrics && account.smartleadAccountId && (
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />

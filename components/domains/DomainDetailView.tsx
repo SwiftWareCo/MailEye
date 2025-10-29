@@ -6,8 +6,9 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -37,6 +38,7 @@ import type { DomainDetails, TabBadgeStatus } from '@/lib/types/domain-details';
 
 interface DomainDetailViewProps {
   details: DomainDetails;
+  initialTab?: string;
   // Server actions (optional - passed from parent page)
   onVerifyNameservers?: () => void;
   onConfigureEmailDNS?: () => Promise<void>;
@@ -59,6 +61,7 @@ interface DomainDetailViewProps {
 
 export function DomainDetailView({
   details,
+  initialTab = 'overview',
   onVerifyNameservers,
   onConfigureEmailDNS,
   onConfirmManualVerification,
@@ -66,10 +69,24 @@ export function DomainDetailView({
   onCreateDMARCRecord,
 }: DomainDetailViewProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('overview');
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [isCreatingEmail, setIsCreatingEmail] = useState(false);
 
   const { domain, setupStatus } = details;
+
+  // Handle refresh by invalidating queries instead of reloading page
+  const handleRefresh = () => {
+    // Invalidate all queries so they refetch when needed
+    queryClient.invalidateQueries();
+  };
+
+  // Sync active tab with URL when it changes
+  useEffect(() => {
+    const tabFromUrl = searchParams.get('tab') || 'overview';
+    setActiveTab(tabFromUrl);
+  }, [searchParams]);
 
   // Calculate tab badges
   const getTabBadge = (
@@ -157,7 +174,10 @@ export function DomainDetailView({
     if (isTabLocked(tab)) {
       return; // Don't navigate to locked tabs
     }
-    setActiveTab(tab);
+    // Update URL without rerendering using History API
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.pushState({ tab }, '', url.toString());
   };
 
   // Determine if a tab is locked based on prerequisites
@@ -372,8 +392,9 @@ export function DomainDetailView({
                 </div>
 
                 <EmailAccountsTable
+                  domainId={domain.id}
                   emailAccounts={details.emailAccounts}
-                  onRefresh={() => window.location.reload()}
+                  onRefresh={handleRefresh}
                 />
 
                 <EmailAccountCreationModal

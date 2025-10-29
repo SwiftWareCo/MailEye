@@ -9,6 +9,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Table,
   TableBody,
@@ -39,80 +40,111 @@ import {
 import { toast } from 'sonner';
 import { SmartleadOAuthGuide } from '@/components/warmup/SmartleadOAuthGuide';
 import { disconnectSmartleadAccountAction } from '@/server/smartlead/sync.actions';
-import { getDecryptedPasswordAction } from '@/server/email/email.actions';
+import { getDecryptedPasswordAction, getEmailAccountsByDomainAction } from '@/server/email/email.actions';
 import type { EmailAccountInfo } from '@/lib/types/domain-details';
 
 interface EmailAccountsTableProps {
-  emailAccounts: EmailAccountInfo[];
+  domainId: string;
+  emailAccounts?: EmailAccountInfo[];
   onRefresh?: () => void;
 }
 
-export function EmailAccountsTable({ emailAccounts, onRefresh }: EmailAccountsTableProps) {
+export function EmailAccountsTable({ domainId, emailAccounts: initialAccounts, onRefresh }: EmailAccountsTableProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [oauthGuideOpen, setOauthGuideOpen] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<string>('');
   const [selectedAccountEmail, setSelectedAccountEmail] = useState<string>('');
   const [selectedAccountPassword, setSelectedAccountPassword] = useState<string>('');
-  const [isLoadingPassword, setIsLoadingPassword] = useState(false);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
 
-  const handleSetupWarmup = async (account: EmailAccountInfo) => {
-    setIsLoadingPassword(true);
-    try {
-      // Fetch decrypted password for OAuth guide
-      const result = await getDecryptedPasswordAction(account.id);
+  // Fetch email accounts using TanStack Query
+  const {
+    data: queryData,
+  } = useQuery({
+    queryKey: ['email-accounts', domainId],
+    queryFn: () => getEmailAccountsByDomainAction(domainId),
+    enabled: !!domainId,
+  });
 
+  // Use server-provided accounts initially, then switch to query data
+  const emailAccounts: EmailAccountInfo[] = queryData?.success && queryData.accounts
+    ? queryData.accounts
+    : (initialAccounts || []);
+
+  // Mutation for fetching password
+  const {
+    mutate: fetchPassword,
+    isPending: isLoadingPassword,
+  } = useMutation({
+    mutationFn: (accountId: string) => getDecryptedPasswordAction(accountId),
+    onSuccess: (result, accountId) => {
       if (result.success && result.password) {
-        setSelectedAccountId(account.id);
-        setSelectedAccountEmail(account.email);
-        setSelectedAccountPassword(result.password);
-        setOauthGuideOpen(true);
+        const account = emailAccounts.find(a => a.id === accountId);
+        if (account) {
+          setSelectedAccountId(accountId);
+          setSelectedAccountEmail(account.email);
+          setSelectedAccountPassword(result.password);
+          setOauthGuideOpen(true);
+        }
       } else {
         toast.error('Failed to retrieve password', {
           description: result.error || 'Unable to open setup guide',
         });
       }
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Failed to fetch password:', error);
       toast.error('An error occurred', {
         description: 'Unable to retrieve account credentials',
       });
-    } finally {
-      setIsLoadingPassword(false);
-    }
+    },
+  });
+
+  const handleSetupWarmup = (account: EmailAccountInfo) => {
+    fetchPassword(account.id);
   };
 
   const handleViewMetrics = (accountId: string) => {
     router.push(`/email-accounts/${accountId}`);
   };
 
-  const handleDisconnect = async (account: EmailAccountInfo) => {
-    if (!confirm(`Disconnect ${account.email} from Smartlead? This will stop warmup.`)) {
-      return;
-    }
-
-    setDisconnectingId(account.id);
-    try {
-      const result = await disconnectSmartleadAccountAction(account.id);
-
+  // Mutation for disconnecting Smartlead account
+  const {
+    mutate: disconnect,
+  } = useMutation({
+    mutationFn: (accountId: string) => disconnectSmartleadAccountAction(accountId),
+    onSuccess: (result, accountId) => {
       if (result.success) {
+        const account = emailAccounts.find(a => a.id === accountId);
         toast.success('Disconnected from Smartlead', {
-          description: `${account.email} has been disconnected`,
+          description: `${account?.email} has been disconnected`,
         });
+        // Invalidate and refetch email accounts
+        queryClient.invalidateQueries({ queryKey: ['email-accounts', domainId] });
         onRefresh?.();
       } else {
         toast.error('Failed to disconnect', {
           description: result.error || 'Please try again',
         });
       }
-    } catch (error) {
+      setDisconnectingId(null);
+    },
+    onError: (error) => {
       console.error('Disconnect error:', error);
       toast.error('An error occurred', {
         description: 'Failed to disconnect account',
       });
-    } finally {
       setDisconnectingId(null);
+    },
+  });
+
+  const handleDisconnect = (account: EmailAccountInfo) => {
+    if (!confirm(`Disconnect ${account.email} from Smartlead? This will stop warmup.`)) {
+      return;
     }
+    setDisconnectingId(account.id);
+    disconnect(account.id);
   };
 
   const getConnectionBadge = (account: EmailAccountInfo) => {
@@ -206,7 +238,10 @@ export function EmailAccountsTable({ emailAccounts, onRefresh }: EmailAccountsTa
           <TableBody>
             {emailAccounts.map((account) => (
               <TableRow key={account.id}>
-                <TableCell className="font-medium">
+                <TableCell
+                  className="font-medium cursor-pointer hover:text-blue-500 transition-colors"
+                  onClick={() => router.push(`/email-accounts/${account.id}`)}
+                >
                   <div>
                     <p>{account.email}</p>
                     {account.displayName && (
@@ -304,7 +339,11 @@ export function EmailAccountsTable({ emailAccounts, onRefresh }: EmailAccountsTa
         email={selectedAccountEmail}
         password={selectedAccountPassword}
         emailAccountId={selectedAccountId}
-        onSyncSuccess={onRefresh}
+        onSyncSuccess={() => {
+          // Invalidate email accounts query to refetch data
+          queryClient.invalidateQueries({ queryKey: ['email-accounts', domainId] });
+          onRefresh?.();
+        }}
       />
     </>
   );

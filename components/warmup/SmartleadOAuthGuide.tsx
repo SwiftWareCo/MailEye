@@ -8,6 +8,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -51,7 +52,6 @@ export function SmartleadOAuthGuide({
 }: SmartleadOAuthGuideProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [completed, setCompleted] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
 
   const handleCopyPassword = async () => {
     try {
@@ -75,18 +75,13 @@ export function SmartleadOAuthGuide({
     window.open('https://app.smartlead.ai/app/email-accounts', '_blank');
   };
 
-  const handleComplete = async () => {
-    if (!completed) {
-      toast.error('Please check the box to confirm completion');
-      return;
-    }
-
-    setIsSyncing(true);
-
-    try {
-      // Sync with Smartlead to verify connection
-      const result = await syncSmartleadAccountAction(emailAccountId);
-
+  // Sync with Smartlead mutation
+  const {
+    mutate: syncAccount,
+    isPending: isSyncing,
+  } = useMutation({
+    mutationFn: () => syncSmartleadAccountAction(emailAccountId),
+    onSuccess: (result) => {
       if (result.success) {
         toast.success('Successfully connected to Smartlead!', {
           description: `${result.email} is now synced and ready for warmup`,
@@ -98,14 +93,22 @@ export function SmartleadOAuthGuide({
           description: result.error || 'Please try again',
         });
       }
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Sync error:', error);
       toast.error('An error occurred', {
         description: 'Failed to sync with Smartlead',
       });
-    } finally {
-      setIsSyncing(false);
+    },
+  });
+
+  const handleComplete = () => {
+    if (!completed) {
+      toast.error('Please check the box to confirm completion');
+      return;
     }
+
+    syncAccount();
   };
 
   return (

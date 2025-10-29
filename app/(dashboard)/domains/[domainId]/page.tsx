@@ -21,12 +21,17 @@ interface DomainDetailPageProps {
   params: Promise<{
     domainId: string;
   }>;
+  searchParams: Promise<{
+    tab?: string;
+  }>;
 }
 
 export default async function DomainDetailPage({
   params,
+  searchParams,
 }: DomainDetailPageProps) {
   const { domainId } = await params;
+  const { tab } = await searchParams;
   const { needsOnboarding, user } = await requireOnboarding();
 
   // If user is not authenticated, Stack Auth middleware will handle redirect
@@ -54,6 +59,7 @@ export default async function DomainDetailPage({
   return (
     <DomainDetailView
       details={details}
+      initialTab={tab || 'overview'}
       onVerifyNameservers={async () => {
         'use server';
         await boundVerifyNameservers(domainId);

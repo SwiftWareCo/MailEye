@@ -11,6 +11,7 @@ import { createEmailAccount } from './google-workspace-provisioner';
 import { saveEmailAccount, getEmailAccountPasswordForUser } from './email-account-manager';
 import { getGoogleWorkspaceCredentials } from '../credentials/credentials.data';
 import type { EmailAccountResult, CreateEmailAccountParams, EmailCredentials } from '@/lib/types/email';
+import type { EmailAccountInfo } from '@/lib/types/domain-details';
 import { getDomainById } from '../domain/domain.data';
 
 /**
@@ -391,3 +392,78 @@ export async function getEmailAccountPasswordAction(
  * Used for getting decrypted password for OAuth setup flows
  */
 export const getDecryptedPasswordAction = getEmailAccountPasswordAction;
+
+/**
+ * Get Email Accounts by Domain Action
+ *
+ * Fetches all email accounts for a domain with formatted info for client display
+ *
+ * @param domainId - Domain ID to fetch accounts for
+ * @returns Formatted email account info or error
+ */
+export async function getEmailAccountsByDomainAction(
+  domainId: string
+): Promise<{ success: boolean; accounts?: EmailAccountInfo[]; error?: string }> {
+  // Authenticate user
+  const user = await stackServerApp.getUser();
+  if (!user) {
+    return {
+      success: false,
+      error: 'Authentication required',
+    };
+  }
+
+  try {
+    // Import at top level to avoid circular imports
+    const { emailAccounts: emailAccountsTable } = await import('@/lib/db/schema');
+    const { db } = await import('@/lib/db');
+    const { eq, and } = await import('drizzle-orm');
+
+    // Verify domain belongs to user
+    const { domains } = await import('@/lib/db/schema');
+    const domain = await db.query.domains.findFirst({
+      where: and(eq(domains.id, domainId), eq(domains.userId, user.id)),
+    });
+
+    if (!domain) {
+      return {
+        success: false,
+        error: 'Domain not found or unauthorized',
+      };
+    }
+
+    // Fetch email accounts for domain
+    const accounts = await db.query.emailAccounts.findMany({
+      where: eq(emailAccountsTable.domainId, domainId),
+      orderBy: (emailAccounts, { asc }) => [asc(emailAccounts.createdAt)],
+    });
+
+    // Format accounts with required info
+    const formattedAccounts = accounts.map((account) => ({
+      id: account.id,
+      email: account.email,
+      displayName: account.displayName,
+      status: account.status,
+      isVerified: account.isVerified,
+      warmupStatus: account.warmupStatus,
+      warmupDayCount: account.warmupDayCount,
+      dailyEmailLimit: account.dailyEmailLimit,
+      smartleadAccountId: account.smartleadAccountId,
+      deliverabilityScore: account.deliverabilityScore,
+      reputationScore: account.reputationScore,
+      createdAt: account.createdAt,
+      warmupStartedAt: account.warmupStartedAt,
+    }));
+
+    return {
+      success: true,
+      accounts: formattedAccounts,
+    };
+  } catch (error) {
+    console.error('Failed to fetch email accounts:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch email accounts',
+    };
+  }
+}
