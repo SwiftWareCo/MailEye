@@ -164,14 +164,14 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
   const handleResetSettings = () => {
     const defaults = {
       warmupEnabled: true,
-      maxEmailPerDay: 50,          // Industry Recommendation (per cold-email-best-practices.md)
-      totalWarmupPerDay: 25,       // Conservative Start (per cold-email-best-practices.md)
-      dailyRampup: 5,              // Gradual increase
-      replyRatePercentage: 30,     // Target 30% reply rate during warmup
+      maxEmailPerDay: 50, // Max total emails (warmup + campaigns) per day
+      totalWarmupPerDay: 5, // Start at 5 emails/day (SmartLead recommends 5-8 for new accounts)
+      dailyRampup: 5, // Increase by 5 emails/day (SmartLead requires minimum 5)
+      replyRatePercentage: 30, // 30-40% reply rate initially (can increase to 60-70% after 2 weeks)
     };
     setWarmupSettings(defaults);
     setInitialSettings(defaults);
-    toast.info('Settings reset to defaults');
+    toast.info('Settings reset to SmartLead recommended defaults');
   };
 
   const getHealthBadge = () => {
@@ -375,7 +375,7 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
                     className="w-full"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Number of warmup emails to send daily
+                    Number of warmup emails to send daily (SmartLead recommends starting at 5-8, max 40-50)
                   </p>
                 </div>
 
@@ -386,7 +386,7 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
                   </Label>
                   <Slider
                     id="daily-rampup"
-                    min={1}
+                    min={5}
                     max={20}
                     step={1}
                     value={[warmupSettings.dailyRampup]}
@@ -396,7 +396,7 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
                     className="w-full"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Increase warmup volume by this amount each day
+                    Increase warmup volume by this amount each day (SmartLead requires minimum 5)
                   </p>
                 </div>
 
@@ -417,7 +417,7 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
                     className="w-full"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Target percentage of warmup emails to reply to
+                    Target percentage of warmup emails to reply to (SmartLead recommends 30-40% initially, 60-70% after 2 weeks)
                   </p>
                 </div>
               </div>

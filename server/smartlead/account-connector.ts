@@ -39,12 +39,14 @@ import { eq } from 'drizzle-orm';
 
 /**
  * Default warmup configuration for new connections
+ * Aligned with SmartLead 2025 best practices for optimal deliverability
+ * Start conservatively and ramp up gradually to build sender reputation
  */
 const DEFAULT_WARMUP_CONFIG = {
   warmupEnabled: true,
   maxEmailPerDay: 50,
-  totalWarmupPerDay: 40,
-  dailyRampup: 5,
+  totalWarmupPerDay: 5, // Start at 5 emails/day (SmartLead recommends 5-8 for new accounts)
+  dailyRampup: 5, // Increase by 5 emails/day (5→10→15→20→25→30...)
 };
 
 /**

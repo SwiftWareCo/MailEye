@@ -153,20 +153,25 @@ Most email clients display only **30 characters** of the sender name on mobile/d
 - **Maximum Safe:** 100 emails/account/day (only after warmup)
 
 ### Gradual Volume Increase
-Do not start at max volume. Gradually increase over 1-2 weeks:
+Do not start at max volume. Gradually increase over 2-4 weeks using SmartLead's recommended progression:
 
-**Warmup Schedule Example:**
+**SmartLead Recommended Warmup Schedule:**
 ```
-Week 1:
-  Day 1-3:  10 emails/day
-  Day 4-7:  20 emails/day
+Week 1 (Conservative Start):
+  Day 1-2:   5 emails/day   (start very low)
+  Day 3-4:  10 emails/day   (+5 daily rampup)
+  Day 5-7:  15 emails/day
 
-Week 2:
-  Day 8-10:  30 emails/day
-  Day 11-14: 50 emails/day
+Week 2 (Gradual Increase):
+  Day 8-10:  20 emails/day
+  Day 11-14: 25 emails/day
 
-Week 3+:
-  Maintain 50 emails/day or increase to 75-100 if metrics are good
+Week 3-4 (Target Volume):
+  Day 15-21: 30 emails/day
+  Day 22+:   35-40 emails/day (maintain, don't exceed 50)
+
+Note: This schedule uses SmartLead's +5 emails/day ramp rate.
+Never jump straight to 25-40 emails/day on new accounts.
 ```
 
 ### Inbox Rotation Strategy
@@ -207,6 +212,79 @@ The email account creation system tracks:
 - `warmupDayCount`: Days into warmup process
 - `dailyEmailLimit`: Current daily sending limit (increases over time)
 - `dailyEmailsSent`: Emails sent today (enforces limit)
+
+### SmartLead Warmup Configuration (2025 Best Practices)
+
+For email accounts connected to SmartLead, follow these recommended settings to maximize deliverability and build sender reputation safely:
+
+#### Initial Setup (Days 1-7)
+
+**Warmup Enabled**: ✅ **Yes** (always enable for new accounts)
+- Leaving warmup off removes the safety net that prevents your first outreach from looking suspicious
+- SmartLead's network sends and receives calibration emails to improve sender reputation
+- Never start cold emailing without warmup on a new domain
+
+**Daily Warmup Email Volume**: **Start at 5-8 emails/day**
+- SmartLead recommends beginning at only 5-8 warm-up emails per day per account
+- Example: Start at 5 warm-up emails/day in the first days
+- **DO NOT** jump straight to 25 or 40 emails/day - this is too aggressive and triggers spam filters
+
+**Daily Rampup Rate**: **+5 emails per day** (gradual increase)
+- SmartLead requires minimum 5 emails/day increase
+- Enable "Daily Ramp Up" setting in SmartLead
+- Example progression: 5 → 10 → 15 → 20 → 25 → 30 → 35 → 40 over ~8 days
+- Steady, incremental growth avoids sudden jumps that "jolt" spam filters
+
+**Reply Rate Target**: **30-40% initially**
+- SmartLead's warmup network automatically generates replies to a portion of warmup emails
+- Start with 30-40% reply rate during initial warm-up
+- This means about a third of warm-up emails get a reply, which looks like natural engagement
+- Goal is to simulate real conversations without appearing artificial
+
+**Randomization**: **Use random ranges** (e.g., 30-40 emails/day instead of exactly 40)
+- Set a slight random range so daily volume varies (prevents robotic patterns)
+- SmartLead spaces out emails (e.g., a few minutes apart) so they don't all send at once
+- Variability makes sending behavior look more human and less automated
+
+#### After 2 Weeks (Days 14+)
+
+**Daily Warmup Volume**: **20-30 emails/day**
+- After about two weeks of gradual increase, raise volume to 20-30 emails/day
+- This is the "maintenance" volume for most accounts
+- Continue monitoring deliverability metrics
+
+**Reply Rate Target**: **Can increase to 60-70%**
+- Once you begin actual outreach (after warmup), increase reply rate to 60-70%
+- SmartLead suggests capping around 60% to appear realistic
+- Higher engagement maintains sender reputation during campaigns
+
+#### Maximum Safe Volume
+
+**Do not exceed 40-50 emails/day** for warmup
+- SmartLead notes 40/day as typical upper limit
+- Up to ~50 is absolute maximum
+- It's generally not necessary to exceed these volumes
+- Higher volumes increase spam risk without significant benefit
+
+#### Common Mistakes to Avoid
+
+❌ **Starting at 25-40 warmup emails/day** - Too aggressive, triggers spam filters
+❌ **Disabling warmup on new domains** - Removes sender reputation safety net
+❌ **Skipping daily rampup** - Sudden volume jumps are suspicious
+❌ **Setting reply rate too high (>70%)** or too low (<20%) - Appears unnatural
+❌ **Using exact daily volumes** - Robotic pattern, use randomization instead
+
+#### Recommended SmartLead Settings Summary
+
+| Setting | Initial (Days 1-7) | After 2 Weeks (Days 14+) | Maximum |
+|---------|-------------------|-------------------------|---------|
+| Warmup Enabled | ✅ Yes | ✅ Yes | ✅ Yes |
+| Daily Warmup Volume | 5-8 emails/day | 20-30 emails/day | 40-50 emails/day |
+| Daily Rampup | +5 emails/day | +3-5 emails/day | N/A |
+| Reply Rate | 30-40% | 60-70% | 70% |
+| Randomization | ✅ Enabled | ✅ Enabled | ✅ Enabled |
+
+**Sources**: SmartLead official documentation, Reddit r/emailmarketing community discussions, and The Lead Gen Letter industry analysis (2025).
 
 ---
 

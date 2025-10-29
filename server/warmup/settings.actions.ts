@@ -239,6 +239,7 @@ export async function disableWarmupAction(emailAccountId: string) {
 
 /**
  * Reset warmup settings to recommended defaults
+ * Aligned with SmartLead 2025 best practices
  *
  * @param emailAccountId - Local email account ID
  * @returns Success status or error
@@ -246,9 +247,9 @@ export async function disableWarmupAction(emailAccountId: string) {
 export async function resetWarmupSettingsAction(emailAccountId: string) {
   return await updateWarmupSettingsAction(emailAccountId, {
     warmupEnabled: true,
-    maxEmailPerDay: 50,
-    totalWarmupPerDay: 40,
-    dailyRampup: 5,
-    replyRatePercentage: 30,
+    maxEmailPerDay: 50, // Max total emails (warmup + campaigns) per day
+    totalWarmupPerDay: 5, // Start at 5 emails/day (SmartLead recommends 5-8 for new accounts)
+    dailyRampup: 5, // Increase by 5 emails/day (5→10→15→20→25→30...)
+    replyRatePercentage: 30, // 30-40% reply rate initially (can increase to 60-70% after 2 weeks)
   });
 }
