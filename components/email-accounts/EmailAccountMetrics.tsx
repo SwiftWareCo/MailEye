@@ -86,6 +86,7 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
   } | null>(null);
   const [initialSettings, setInitialSettings] = useState<typeof warmupSettings>(null);
 
+
   // Fetch metrics and settings with combined query (more efficient than 2 separate requests)
   const {
     data: warmupData,
@@ -97,8 +98,11 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
     staleTime: 60000, // Cache for 1 minute to avoid refetch on remount
   });
 
+
   const metrics = warmupData?.metrics || [];
   const health = warmupData?.health || null;
+
+  console.log(warmupData?.settings)
 
   // Update local state when settings are fetched
   if (warmupData?.success && warmupData.settings && !warmupSettings) {
@@ -120,7 +124,7 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
     onSuccess: (result) => {
       if (result.success) {
         // Invalidate and refetch metrics query
-        queryClient.invalidateQueries({ queryKey: ['email-account-metrics', account.id] });
+        queryClient.invalidateQueries({ queryKey: ['email-account-warmup-data', account.id] });
         toast.success('Metrics refreshed', {
           description: 'Latest data fetched from Smartlead',
         });
@@ -145,6 +149,9 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
     mutationFn: (settings: typeof warmupSettings) =>
       updateWarmupSettingsAction(account.id, settings!),
     onSuccess: () => {
+      // Invalidate query to refetch updated settings from database
+      queryClient.invalidateQueries({ queryKey: ['email-account-warmup-data', account.id] });
+
       // Clear unsaved indicator by updating initialSettings
       setInitialSettings(warmupSettings);
       toast.success('Settings saved', {
@@ -177,7 +184,7 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
   const handleResetSettings = () => {
     const defaults = {
       warmupEnabled: true,
-      maxEmailPerDay: 50, // Max total emails (warmup + campaigns) per day
+      maxEmailPerDay: 40, // Max total emails (warmup + campaigns) per day
       warmupMinCount: 5, // Start range minimum (SmartLead recommends 5-8 range for new accounts)
       warmupMaxCount: 8, // Start range maximum (randomization: 5-8 emails/day)
       dailyRampup: 5, // Increase by 5 emails/day (SmartLead requires minimum 5)

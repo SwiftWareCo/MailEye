@@ -25,9 +25,9 @@ import {
   addEmailAccountToCampaign,
   removeEmailAccountFromCampaign,
   updateEmailAccount as updateSmartleadAccount,
-  updateWarmupSettings as updateSmartleadWarmup,
+  updateWarmupSettingsAdvanced,
 } from '@/lib/clients/smartlead';
-import { getSmartleadCredentials } from '@/server/credentials/credentials.data';
+import { getSmartleadBearerToken, getSmartleadCredentials } from '@/server/credentials/credentials.data';
 import type {
   SmartleadConnectionParams,
   SmartleadConnectionResult,
@@ -704,9 +704,9 @@ export async function getSmartleadConnectionStatus(emailAccountId: string): Prom
  *   replyRatePercentage: 30,
  * });
  *
- * NOTE: This function uses the documented SmartLead API which doesn't support
- * warmupMinCount/warmupMaxCount. For advanced features, use updateWarmupSettingsAction
- * from server/warmup/settings.actions.ts which uses the Bearer token authenticated endpoint.
+ * NOTE: This function now uses the undocumented SmartLead bearer token endpoint
+ * which supports ALL warmup features including randomization (warmupMinCount/warmupMaxCount),
+ * weekdays-only mode, auto-adjust, and tracking domain warmup.
  */
 export async function updateSmartleadWarmupSettings(
   emailAccountId: string,
@@ -720,15 +720,6 @@ export async function updateSmartleadWarmupSettings(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get user's Smartlead API credentials
-    const smartleadCreds = await getSmartleadCredentials();
-    if (!smartleadCreds || !smartleadCreds.apiKey) {
-      return {
-        success: false,
-        error: 'Smartlead credentials not configured',
-      };
-    }
-
     // Get Smartlead account ID
     const status = await getSmartleadConnectionStatus(emailAccountId);
     if (!status.connected || !status.smartleadAccountId) {
@@ -740,42 +731,31 @@ export async function updateSmartleadWarmupSettings(
 
     const smartleadAccountId = status.smartleadAccountId;
 
-    // Update basic warmup settings via documented API endpoint
-    // Note: The documented API doesn't support warmupMinCount/warmupMaxCount
-    // Those are set via the advanced endpoint in updateWarmupSettingsAction
-    if (
-      settings.warmupEnabled !== undefined ||
-      settings.dailyRampup ||
-      settings.replyRatePercentage
-    ) {
-      try {
-        await updateSmartleadWarmup(smartleadCreds.apiKey, smartleadAccountId, {
-          warmupEnabled: settings.warmupEnabled,
-          dailyRampup: settings.dailyRampup,
-          replyRatePercentage: settings.replyRatePercentage,
-        });
-      } catch (warmupError) {
-        console.error('Failed to update Smartlead warmup settings:', warmupError);
-        return {
-          success: false,
-          error: `Failed to update warmup settings: ${warmupError instanceof Error ? warmupError.message : 'Unknown error'}`,
-        };
-      }
+    // Get valid bearer token (auto-refreshes if expired)
+    const bearerToken = await getSmartleadBearerToken();
+    if (!bearerToken) {
+      return {
+        success: false,
+        error: 'Smartlead bearer token not available. Please save your Smartlead login credentials.',
+      };
     }
 
-    // Update send limits via account update endpoint (separate from warmup)
-    if (settings.maxEmailPerDay !== undefined) {
-      try {
-        await updateSmartleadAccount(smartleadCreds.apiKey, smartleadAccountId, {
-          maxEmailPerDay: settings.maxEmailPerDay,
-        });
-      } catch (accountError) {
-        console.error('Failed to update Smartlead send limits:', accountError);
-        return {
-          success: false,
-          error: `Failed to update send limits: ${accountError instanceof Error ? accountError.message : 'Unknown error'}`,
-        };
-      }
+    // Update warmup settings using the advanced endpoint (undocumented, supports all features)
+    try {
+      await updateWarmupSettingsAdvanced(bearerToken, smartleadAccountId, {
+        warmupEnabled: settings.warmupEnabled,
+        maxEmailPerDay: settings.maxEmailPerDay,
+        warmupMinCount: settings.warmupMinCount,
+        warmupMaxCount: settings.warmupMaxCount,
+        dailyRampup: settings.dailyRampup,
+        replyRatePercentage: settings.replyRatePercentage,
+      });
+    } catch (warmupError) {
+      console.error('Failed to update Smartlead warmup settings:', warmupError);
+      return {
+        success: false,
+        error: `Failed to update warmup settings: ${warmupError instanceof Error ? warmupError.message : 'Unknown error'}`,
+      };
     }
 
     // Update local database

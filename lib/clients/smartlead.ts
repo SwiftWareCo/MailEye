@@ -261,50 +261,6 @@ export async function getEmailAccountDetails(apiKey: string, emailAccountId: str
 }
 
 /**
- * Updates warmup settings for an email account (DOCUMENTED API - LIMITED FEATURES)
- * Uses POST method as per Smartlead API documentation
- *
- * NOTE: This endpoint only supports basic warmup parameters.
- * For advanced features, use updateWarmupSettingsAdvanced() instead.
- */
-export async function updateWarmupSettings(
-  apiKey: string,
-  emailAccountId: string,
-  settings: {
-    warmupEnabled?: boolean;
-    totalWarmupPerDay?: number;
-    dailyRampup?: number;
-    replyRatePercentage?: number;
-    warmupKeyId?: string;
-  }
-) {
-  const response = await fetch(
-    `${SMARTLEAD_BASE_URL}/email-accounts/${emailAccountId}/warmup?api_key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        // Documented parameters (snake_case) - from official API
-        warmup_enabled: settings.warmupEnabled,
-        total_warmup_per_day: settings.totalWarmupPerDay,
-        daily_rampup: settings.dailyRampup,
-        reply_rate_percentage: settings.replyRatePercentage,
-        warmup_key_id: settings.warmupKeyId,
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`Smartlead warmup update failed: ${error.message || response.statusText}`);
-  }
-
-  return await response.json();
-}
-
-/**
  * Updates warmup settings with ADVANCED FEATURES (UNDOCUMENTED ENDPOINT)
  *
  * This uses SmartLead's internal UI endpoint discovered via browser DevTools analysis.
@@ -412,6 +368,7 @@ export async function getWarmupStats(apiKey: string, emailAccountId: string) {
       },
     }
   );
+
 
   if (!response.ok) {
     const error = await response.json();

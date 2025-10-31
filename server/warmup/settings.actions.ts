@@ -78,22 +78,31 @@ export async function getWarmupSettingsAction(emailAccountId: string) {
       };
     }
 
-    // Fetch account details from Smartlead
+    // Fetch account details from Smartlead (documented API)
     const smartleadAccount = await getEmailAccountDetails(
       smartleadCreds.apiKey,
       mapping.smartleadEmailAccountId
     );
 
+    // Sync warmup_details to local DB if available (keeps DB in sync with Smartlead)
+    if (smartleadAccount.warmup_details) {
+      await syncSmartleadWarmupToLocalDB(emailAccountId, smartleadAccount.warmup_details);
+      console.log('[Warmup Settings] Synced warmup status to local DB during fetch');
+    }
+
+
     // Extract warmup settings from SmartLead API response
-    // Note: Advanced features are fetched from local DB because SmartLead's
-    // getEmailAccountDetails endpoint doesn't include them
+    // IMPORTANT: Use warmup_details.status (NOT warmup_enabled) for consistency
+    // with the advanced update endpoint. Both GET and UPDATE now use the same field.
     const settings: WarmupSettings = {
-      warmupEnabled: smartleadAccount.warmup_enabled ?? false,
-      maxEmailPerDay: smartleadAccount.max_email_per_day ?? 50,
-      warmupMinCount: account.warmupMinCount ?? 5,
-      warmupMaxCount: account.warmupMaxCount ?? 8,
+      // Use warmup_details.status for consistency with update endpoint
+      warmupEnabled: smartleadAccount.warmup_details?.status === 'ACTIVE',
+      maxEmailPerDay: smartleadAccount.warmup_details?.max_email_per_day ?? 50,
+      // Prefer warmup_details values, fallback to local DB, then defaults
+      warmupMinCount: account.warmupMinCount ?? smartleadAccount.warmup_details?.warmup_min_count ?? 5,
+      warmupMaxCount: account.warmupMaxCount ?? smartleadAccount.warmup_details?.warmup_max_count ?? 8,
       dailyRampup: smartleadAccount.daily_rampup ?? 5,
-      replyRatePercentage: smartleadAccount.reply_rate_percentage ?? 30,
+      replyRatePercentage: smartleadAccount.warmup_details?.reply_rate ?? smartleadAccount.reply_rate_percentage ?? 30,
 
       // Advanced features from local DB (synced from advanced warmup endpoint)
       isRampupEnabled: account.isRampupEnabled ?? false,
