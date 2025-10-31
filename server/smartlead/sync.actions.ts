@@ -102,7 +102,14 @@ export async function syncSmartleadAccountAction(emailAccountId: string) {
     const warmupEnabled = accountDetails?.warmup_enabled ?? matchingAccount.warmup_enabled ?? false;
     const warmupActive = accountDetails?.warmup_details?.status === 'ACTIVE';
     const dailyLimit = accountDetails?.max_email_per_day ?? matchingAccount.max_email_per_day;
-    const deliverabilityScore = accountDetails?.warmup_details?.reputation_percentage;
+
+    // Parse warmup reputation (can be string "100%" or number 100)
+    const warmupReputation = accountDetails?.warmup_details?.warmup_reputation;
+    const deliverabilityScore = warmupReputation
+      ? (typeof warmupReputation === 'string'
+        ? parseInt(warmupReputation.replace('%', ''), 10)
+        : warmupReputation)
+      : undefined;
 
     // Determine warmup status for our database
     let warmupStatus: string = 'not_started';

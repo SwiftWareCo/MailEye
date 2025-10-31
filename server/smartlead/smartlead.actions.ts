@@ -32,7 +32,8 @@ import type {
  * const result = await connectToSmartleadAction('email-123', {
  *   warmupEnabled: true,
  *   maxEmailPerDay: 50,
- *   totalWarmupPerDay: 40,
+ *   warmupMinCount: 5,
+ *   warmupMaxCount: 8,
  *   dailyRampup: 5,
  * });
  */
@@ -41,7 +42,8 @@ export async function connectToSmartleadAction(
   warmupConfig?: {
     warmupEnabled?: boolean;
     maxEmailPerDay?: number;
-    totalWarmupPerDay?: number;
+    warmupMinCount?: number;
+    warmupMaxCount?: number;
     dailyRampup?: number;
   }
 ): Promise<SmartleadConnectionResult> {
@@ -64,7 +66,8 @@ export async function connectToSmartleadAction(
     userId: user.id,
     warmupEnabled: warmupConfig?.warmupEnabled ?? true,
     maxEmailPerDay: warmupConfig?.maxEmailPerDay ?? 50,
-    totalWarmupPerDay: warmupConfig?.totalWarmupPerDay ?? 40,
+    warmupMinCount: warmupConfig?.warmupMinCount ?? 5,
+    warmupMaxCount: warmupConfig?.warmupMaxCount ?? 8,
     dailyRampup: warmupConfig?.dailyRampup ?? 5,
   };
 

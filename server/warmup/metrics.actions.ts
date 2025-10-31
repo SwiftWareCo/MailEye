@@ -137,22 +137,28 @@ function transformSmartleadStatsToMetrics(response: SmartleadStatsResponse): War
     return [];
   }
 
+  // Calculate ACTUAL inbox placement from aggregate data
+  // SmartLead API provides total counts but not per-day inbox/spam breakdown
+  const totalSent = Number(response.sent_count) || 0;
+  const totalInbox = Number(response.inbox_count) || 0;
+
+  // IMPORTANT: save_from_spam_count = emails RESCUED from spam (moved to inbox)
+  // This is a POSITIVE metric but does NOT represent total inbox placement
+  // Actual inbox placement = inbox_count / sent_count (from aggregate data)
+  const actualInboxRate = totalSent > 0 ? (totalInbox / totalSent) * 100 : 0;
+
+  // Apply aggregate inbox rate to each day since per-day inbox data is not available
   return response.stats_by_date.map((dayStats) => {
     const sent = dayStats.sent_count || 0;
     const replied = dayStats.reply_count || 0;
-    const savedFromSpam = dayStats.save_from_spam_count || 0;
-
-    // Calculate deliverability rate: (emails in inbox / emails sent) * 100
-    // If no emails sent, deliverability is 0
-    const deliverability_rate = sent > 0 ? (savedFromSpam / sent) * 100 : 0;
 
     return {
       date: dayStats.date,
       sent,
-      delivered: sent - (sent - savedFromSpam), // Approximation: delivered = sent - bounced
-      bounced: sent - savedFromSpam, // Approximation: bounced = sent - in_inbox
+      delivered: sent, // Assume all sent emails were delivered (bounces not available per-day)
+      bounced: 0, // Per-day bounce data not provided by SmartLead API
       replied,
-      deliverability_rate,
+      deliverability_rate: actualInboxRate, // Use aggregate inbox rate for all days
     };
   });
 }
@@ -172,7 +178,6 @@ function calculateHealthAssessment(metrics: WarmupMetrics[]): WarmupHealthAssess
     };
   }
 
-
   // Calculate averages from last 7 days
   const avgDeliverability = metrics.reduce((sum, m) => sum + m.deliverability_rate, 0) / metrics.length;
   const totalSent = metrics.reduce((sum, m) => sum + m.sent, 0);
@@ -182,10 +187,27 @@ function calculateHealthAssessment(metrics: WarmupMetrics[]): WarmupHealthAssess
   const bounceRate = totalSent > 0 ? (totalBounced / totalSent) * 100 : 0;
   const replyRate = totalSent > 0 ? (totalReplied / totalSent) * 100 : 0;
 
+  // Early warmup handling: Don't assess health critically if < 20 emails sent
+  // Not enough data to make accurate assessments during first few days
+  if (totalSent < 20) {
+    return {
+      overall: 'healthy', // Don't mark as critical during early warmup
+      inboxPlacement: avgDeliverability,
+      bounceRate,
+      replyRate,
+      issues: [], // No issues during warmup start
+      recommendations: [
+        'Warmup just started - keep sending emails daily',
+        'Reply to warmup emails manually to improve engagement',
+        `${totalSent} emails sent so far - continue for at least 20 emails before full assessment`,
+      ],
+    };
+  }
+
   const issues: string[] = [];
   const recommendations: string[] = [];
 
-  // Assess health
+  // Assess health (only for accounts with 20+ emails)
   let overall: 'healthy' | 'warning' | 'critical' = 'healthy';
 
   // Critical issues
@@ -268,9 +290,14 @@ export async function getEmailAccountWarmupDataAction(
   settings?: {
     warmupEnabled: boolean;
     maxEmailPerDay: number;
-    totalWarmupPerDay: number;
+    warmupMinCount: number;
+    warmupMaxCount: number;
     dailyRampup: number;
     replyRatePercentage: number;
+    isRampupEnabled?: boolean;
+    weekdaysOnly?: boolean;
+    autoAdjust?: boolean;
+    warmupTrackingDomain?: boolean;
   };
   error?: string;
 }> {

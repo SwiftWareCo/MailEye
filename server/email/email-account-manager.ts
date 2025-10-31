@@ -605,6 +605,7 @@ export async function updateEmailAccountWarmupMetrics(
   accountId: string,
   metrics: {
     warmupStatus?: 'not_started' | 'in_progress' | 'completed' | 'paused';
+    warmupStartedAt?: Date;
     warmupDayCount?: number;
     dailyEmailLimit?: number;
     dailyEmailsSent?: number;

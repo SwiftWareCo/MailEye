@@ -34,6 +34,7 @@ import {
   Settings,
   Save,
   RotateCcw,
+  Info,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -47,6 +48,12 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
+import {
+  Tooltip as UITooltip,
+  TooltipContent as UITooltipContent,
+  TooltipProvider as UITooltipProvider,
+  TooltipTrigger as UITooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface EmailAccount {
   id: string;
@@ -67,9 +74,15 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
   const [warmupSettings, setWarmupSettings] = useState<{
     warmupEnabled: boolean;
     maxEmailPerDay: number;
-    totalWarmupPerDay: number;
+    warmupMinCount: number;
+    warmupMaxCount: number;
     dailyRampup: number;
     replyRatePercentage: number;
+    // SmartLead advanced features
+    isRampupEnabled?: boolean;
+    weekdaysOnly?: boolean;
+    autoAdjust?: boolean;
+    warmupTrackingDomain?: boolean;
   } | null>(null);
   const [initialSettings, setInitialSettings] = useState<typeof warmupSettings>(null);
 
@@ -165,9 +178,16 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
     const defaults = {
       warmupEnabled: true,
       maxEmailPerDay: 50, // Max total emails (warmup + campaigns) per day
-      totalWarmupPerDay: 5, // Start at 5 emails/day (SmartLead recommends 5-8 for new accounts)
+      warmupMinCount: 5, // Start range minimum (SmartLead recommends 5-8 range for new accounts)
+      warmupMaxCount: 8, // Start range maximum (randomization: 5-8 emails/day)
       dailyRampup: 5, // Increase by 5 emails/day (SmartLead requires minimum 5)
       replyRatePercentage: 30, // 30-40% reply rate initially (can increase to 60-70% after 2 weeks)
+
+      // SmartLead advanced features (2025 best practices)
+      isRampupEnabled: true,
+      weekdaysOnly: true,
+      autoAdjust: true,
+      warmupTrackingDomain: true,
     };
     setWarmupSettings(defaults);
     setInitialSettings(defaults);
@@ -337,16 +357,16 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
                   </p>
                 </div>
 
-                {/* Max Emails Per Day */}
+                {/* Total number of warm up emails per day (Max Emails Per Day) */}
                 <div className="space-y-2">
                   <Label htmlFor="max-email-per-day">
-                    Max Emails Per Day: {warmupSettings.maxEmailPerDay}
+                    Total number of warm up emails per day: {warmupSettings.maxEmailPerDay}
                   </Label>
                   <Slider
                     id="max-email-per-day"
                     min={10}
                     max={200}
-                    step={5}
+                    step={1}
                     value={[warmupSettings.maxEmailPerDay]}
                     onValueChange={([value]) =>
                       setWarmupSettings({ ...warmupSettings, maxEmailPerDay: value })
@@ -358,24 +378,25 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
                   </p>
                 </div>
 
-                {/* Total Warmup Per Day */}
+                {/* Randomise number of warm up emails per day (Range Slider) */}
                 <div className="space-y-2">
-                  <Label htmlFor="total-warmup-per-day">
-                    Warmup Emails Per Day: {warmupSettings.totalWarmupPerDay}
+                  <Label htmlFor="warmup-range">
+                    Randomise number of warm up emails per day: {warmupSettings.warmupMinCount}-{warmupSettings.warmupMaxCount}
+                    {warmupSettings.warmupMinCount === warmupSettings.warmupMaxCount && ' (exact count, no randomization)'}
                   </Label>
                   <Slider
-                    id="total-warmup-per-day"
-                    min={5}
-                    max={100}
-                    step={5}
-                    value={[warmupSettings.totalWarmupPerDay]}
-                    onValueChange={([value]) =>
-                      setWarmupSettings({ ...warmupSettings, totalWarmupPerDay: value })
+                    id="warmup-range"
+                    min={1}
+                    max={50}
+                    step={1}
+                    value={[warmupSettings.warmupMinCount, warmupSettings.warmupMaxCount]}
+                    onValueChange={([min, max]) =>
+                      setWarmupSettings({ ...warmupSettings, warmupMinCount: min, warmupMaxCount: max })
                     }
                     className="w-full"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Number of warmup emails to send daily (SmartLead recommends starting at 5-8, max 40-50)
+                    Range of warmup emails to send randomly each day. Set min=max for exact count (e.g., 5-8 for randomization, 10-10 for exact 10). SmartLead recommends 5-8 to prevent robotic patterns.
                   </p>
                 </div>
 
@@ -400,6 +421,32 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
                   </p>
                 </div>
 
+                {/* Enable Daily Rampup Toggle */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="enable-rampup" className="flex items-center gap-2">
+                      Enable Daily Rampup
+                      <UITooltipProvider>
+                        <UITooltip>
+                          <UITooltipTrigger asChild>
+                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                          </UITooltipTrigger>
+                          <UITooltipContent className="max-w-xs">
+                            <p>Automatically increase warmup volume each day by the Daily Rampup amount. Helps gradually build email reputation.</p>
+                          </UITooltipContent>
+                        </UITooltip>
+                      </UITooltipProvider>
+                    </Label>
+                    <Switch
+                      id="enable-rampup"
+                      checked={warmupSettings.isRampupEnabled ?? false}
+                      onCheckedChange={(checked) =>
+                        setWarmupSettings({ ...warmupSettings, isRampupEnabled: checked })
+                      }
+                    />
+                  </div>
+                </div>
+
                 {/* Reply Rate Percentage */}
                 <div className="space-y-2">
                   <Label htmlFor="reply-rate">
@@ -409,7 +456,7 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
                     id="reply-rate"
                     min={10}
                     max={100}
-                    step={5}
+                    step={1}
                     value={[warmupSettings.replyRatePercentage]}
                     onValueChange={([value]) =>
                       setWarmupSettings({ ...warmupSettings, replyRatePercentage: value })
@@ -419,6 +466,84 @@ export function EmailAccountMetrics({ account }: EmailAccountMetricsProps) {
                   <p className="text-xs text-muted-foreground">
                     Target percentage of warmup emails to reply to (SmartLead recommends 30-40% initially, 60-70% after 2 weeks)
                   </p>
+                </div>
+
+                {/* Weekdays Only Toggle */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="weekdays-only" className="flex items-center gap-2">
+                      Weekdays Only
+                      <UITooltipProvider>
+                        <UITooltip>
+                          <UITooltipTrigger asChild>
+                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                          </UITooltipTrigger>
+                          <UITooltipContent className="max-w-xs">
+                            <p>Only send warmup emails Monday-Friday. Creates more natural sending pattern.</p>
+                          </UITooltipContent>
+                        </UITooltip>
+                      </UITooltipProvider>
+                    </Label>
+                    <Switch
+                      id="weekdays-only"
+                      checked={warmupSettings.weekdaysOnly ?? false}
+                      onCheckedChange={(checked) =>
+                        setWarmupSettings({ ...warmupSettings, weekdaysOnly: checked })
+                      }
+                    />
+                  </div>
+                </div>
+
+                {/* Auto-Adjust Warmup Toggle */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="auto-adjust" className="flex items-center gap-2">
+                      Auto-Adjust During Campaigns
+                      <UITooltipProvider>
+                        <UITooltip>
+                          <UITooltipTrigger asChild>
+                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                          </UITooltipTrigger>
+                          <UITooltipContent className="max-w-xs">
+                            <p>SmartLead&apos;s intelligent algorithm automatically reduces warmup volume when campaigns are active (to maintain good sending ratio) and increases it back when campaigns end. Recommended for optimal deliverability.</p>
+                          </UITooltipContent>
+                        </UITooltip>
+                      </UITooltipProvider>
+                    </Label>
+                    <Switch
+                      id="auto-adjust"
+                      checked={warmupSettings.autoAdjust ?? false}
+                      onCheckedChange={(checked) =>
+                        setWarmupSettings({ ...warmupSettings, autoAdjust: checked })
+                      }
+                    />
+                  </div>
+                </div>
+
+                {/* Tracking Domain Warmup Toggle */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="tracking-domain" className="flex items-center gap-2">
+                      Warmup Tracking Domain
+                      <UITooltipProvider>
+                        <UITooltip>
+                          <UITooltipTrigger asChild>
+                            <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                          </UITooltipTrigger>
+                          <UITooltipContent className="max-w-xs">
+                            <p>Includes your tracking domain (open.sleadtrack.com) in warmup emails to build its reputation. This IMPROVES deliverability for tracking links in future campaigns.</p>
+                          </UITooltipContent>
+                        </UITooltip>
+                      </UITooltipProvider>
+                    </Label>
+                    <Switch
+                      id="tracking-domain"
+                      checked={warmupSettings.warmupTrackingDomain ?? false}
+                      onCheckedChange={(checked) =>
+                        setWarmupSettings({ ...warmupSettings, warmupTrackingDomain: checked })
+                      }
+                    />
+                  </div>
                 </div>
               </div>
             )}

@@ -37,6 +37,23 @@ export const emailAccounts = pgTable("email_accounts", {
   dailyEmailsSent: integer("daily_emails_sent").default(0), // Emails sent today
   lastEmailSentAt: timestamp("last_email_sent_at", { withTimezone: true }),
 
+  // SmartLead warmup configuration (synced from API responses)
+  warmupKeyId: varchar("warmup_key_id", { length: 50 }), // e.g., "exact-every"
+  replyRate: integer("reply_rate").default(30), // Reply rate percentage (0-100)
+  dailyReplyLimit: integer("daily_reply_limit").default(8), // Max replies per day
+  warmupMinCount: integer("warmup_min_count"), // Min warmup emails per day (randomization)
+  warmupMaxCount: integer("warmup_max_count"), // Max warmup emails per day (randomization)
+  isRampupEnabled: boolean("is_rampup_enabled").default(false), // Daily rampup enabled
+  rampupValue: integer("rampup_value").default(0), // Daily rampup increment
+  autoAdjustWarmup: boolean("auto_adjust_warmup").default(false), // Auto-adjust during campaigns
+  useCustomDomain: boolean("use_custom_domain").default(false), // Warmup tracking domain
+  sendWarmupsOnlyOnWeekdays: boolean("send_warmups_only_on_weekdays").default(false), // Weekdays-only mode
+  isWarmupBlocked: boolean("is_warmup_blocked").default(false), // SmartLead blocked status
+
+  // SmartLead counters
+  totalSentCount: integer("total_sent_count").default(0), // Total warmup emails sent
+  totalSpamCount: integer("total_spam_count").default(0), // Total spam folder count
+
   // Health metrics
   deliverabilityScore: integer("deliverability_score"), // 0-100
   bounceRate: integer("bounce_rate").default(0), // Percentage

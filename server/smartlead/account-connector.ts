@@ -41,12 +41,20 @@ import { eq } from 'drizzle-orm';
  * Default warmup configuration for new connections
  * Aligned with SmartLead 2025 best practices for optimal deliverability
  * Start conservatively and ramp up gradually to build sender reputation
+ *
+ * NEW: Includes undocumented SmartLead feature toggles discovered via UI analysis
  */
 const DEFAULT_WARMUP_CONFIG = {
   warmupEnabled: true,
   maxEmailPerDay: 50,
-  totalWarmupPerDay: 5, // Start at 5 emails/day (SmartLead recommends 5-8 for new accounts)
+  warmupMinCount: 5, // Start range minimum (SmartLead recommends 5-8 range for new accounts)
+  warmupMaxCount: 8, // Start range maximum (randomization: 5-8 emails/day)
   dailyRampup: 5, // Increase by 5 emails/day (5→10→15→20→25→30...)
+
+  // SmartLead advanced features (2025 best practices)
+  weekdaysOnly: true, // More natural sending pattern (pauses weekends)
+  autoAdjust: true, // Let SmartLead intelligently adjust during campaigns
+  warmupTrackingDomain: true, // Build reputation for tracking domain (open.sleadtrack.com)
 };
 
 /**
@@ -185,6 +193,7 @@ async function createSmartleadMapping(
 
 /**
  * Calls Smartlead API to connect an email account
+ * Includes undocumented SmartLead feature toggle parameters
  */
 async function callSmartleadAPI(
   apiKey: string,
@@ -204,8 +213,10 @@ async function callSmartleadAPI(
   config: {
     warmupEnabled: boolean;
     maxEmailPerDay: number;
-    totalWarmupPerDay?: number;
+    warmupMinCount?: number;
+    warmupMaxCount?: number;
     dailyRampup?: number;
+    replyRatePercentage?: number;
   },
   retryCount: number = 0
 ): Promise<{ success: boolean; data?: SmartleadAccountData; error?: SmartleadConnectionError }> {
@@ -228,6 +239,8 @@ async function callSmartleadAPI(
 
     // Call Smartlead API with correct endpoint and fields
     // Note: Smartlead uses the same password and username (email) for both SMTP and IMAP
+    // Note: Using documented API which doesn't support warmupMinCount/warmupMaxCount directly
+    // These will be set via the advanced endpoint after account creation
     const response: SmartleadApiResponse = await smartleadConnectAPI(apiKey, {
       email: credentials.email,
       firstName,
@@ -239,8 +252,8 @@ async function callSmartleadAPI(
       imapPort: credentials.imap.port,
       warmupEnabled: config.warmupEnabled,
       maxEmailPerDay: config.maxEmailPerDay,
-      totalWarmupPerDay: config.totalWarmupPerDay,
       dailyRampup: config.dailyRampup,
+      replyRatePercentage: config.replyRatePercentage,
     });
 
     // Convert API response to SmartleadAccountData for database storage
@@ -322,7 +335,8 @@ async function callSmartleadAPI(
  *   userId: 'user-456',
  *   warmupEnabled: true,
  *   maxEmailPerDay: 75,
- *   totalWarmupPerDay: 50,
+ *   warmupMinCount: 5,
+ *   warmupMaxCount: 8,
  *   dailyRampup: 5,
  * });
  *
@@ -339,7 +353,8 @@ export async function connectEmailAccountToSmartlead(
     userId,
     warmupEnabled = DEFAULT_WARMUP_CONFIG.warmupEnabled,
     maxEmailPerDay = DEFAULT_WARMUP_CONFIG.maxEmailPerDay,
-    totalWarmupPerDay = DEFAULT_WARMUP_CONFIG.totalWarmupPerDay,
+    warmupMinCount = DEFAULT_WARMUP_CONFIG.warmupMinCount,
+    warmupMaxCount = DEFAULT_WARMUP_CONFIG.warmupMaxCount,
     dailyRampup = DEFAULT_WARMUP_CONFIG.dailyRampup,
   } = params;
 
@@ -413,8 +428,10 @@ export async function connectEmailAccountToSmartlead(
       {
         warmupEnabled,
         maxEmailPerDay,
-        totalWarmupPerDay,
+        warmupMinCount,
+        warmupMaxCount,
         dailyRampup,
+        replyRatePercentage: 30, // Default 30% reply rate
       }
     );
 
@@ -449,11 +466,15 @@ export async function connectEmailAccountToSmartlead(
       String(apiResult.data.emailAccountId)
     );
 
-    // Update warmup status if warmup is enabled
+    // Step 7: Update warmup status in local database
+    // Note: We don't call syncSmartleadWarmupToLocalDB here because the account
+    // creation response doesn't include all warmup details. The sync will happen
+    // when we fetch account details or update warmup settings.
     if (warmupEnabled) {
       await updateEmailAccountStatus(emailAccountId, 'warming');
       await updateEmailAccountWarmupMetrics(emailAccountId, {
         warmupStatus: 'in_progress',
+        warmupStartedAt: new Date(),
         dailyEmailLimit: maxEmailPerDay,
       });
     } else {
@@ -677,17 +698,23 @@ export async function getSmartleadConnectionStatus(emailAccountId: string): Prom
  * await updateSmartleadWarmupSettings('account-123', {
  *   warmupEnabled: true,
  *   maxEmailPerDay: 100,
- *   totalWarmupPerDay: 80,
+ *   warmupMinCount: 5,
+ *   warmupMaxCount: 8,
  *   dailyRampup: 10,
  *   replyRatePercentage: 30,
  * });
+ *
+ * NOTE: This function uses the documented SmartLead API which doesn't support
+ * warmupMinCount/warmupMaxCount. For advanced features, use updateWarmupSettingsAction
+ * from server/warmup/settings.actions.ts which uses the Bearer token authenticated endpoint.
  */
 export async function updateSmartleadWarmupSettings(
   emailAccountId: string,
   settings: {
     warmupEnabled?: boolean;
     maxEmailPerDay?: number;
-    totalWarmupPerDay?: number;
+    warmupMinCount?: number;
+    warmupMaxCount?: number;
     dailyRampup?: number;
     replyRatePercentage?: number;
   }
@@ -713,17 +740,17 @@ export async function updateSmartleadWarmupSettings(
 
     const smartleadAccountId = status.smartleadAccountId;
 
-    // Update warmup settings via POST endpoint
+    // Update basic warmup settings via documented API endpoint
+    // Note: The documented API doesn't support warmupMinCount/warmupMaxCount
+    // Those are set via the advanced endpoint in updateWarmupSettingsAction
     if (
       settings.warmupEnabled !== undefined ||
-      settings.totalWarmupPerDay ||
       settings.dailyRampup ||
       settings.replyRatePercentage
     ) {
       try {
         await updateSmartleadWarmup(smartleadCreds.apiKey, smartleadAccountId, {
           warmupEnabled: settings.warmupEnabled,
-          totalWarmupPerDay: settings.totalWarmupPerDay,
           dailyRampup: settings.dailyRampup,
           replyRatePercentage: settings.replyRatePercentage,
         });

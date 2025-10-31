@@ -30,6 +30,12 @@ export interface GoogleWorkspaceCredentials {
 export interface SmartleadCredentials {
   apiKey: string;
   connectedAt: string;
+  // Bearer token for advanced features (undocumented SmartLead UI endpoint)
+  bearerToken?: string;
+  tokenExpiresAt?: string;
+  // Email/password for token refresh (password encrypted via Stack Auth)
+  email?: string;
+  password?: string;
 }
 
 /**

@@ -35,7 +35,8 @@ export interface SmartleadConnectionParams {
   userId: string;
   warmupEnabled?: boolean;
   maxEmailPerDay?: number;
-  totalWarmupPerDay?: number;
+  warmupMinCount?: number;
+  warmupMaxCount?: number;
   dailyRampup?: number;
 }
 
@@ -165,6 +166,38 @@ export interface WarmupSettings {
 }
 
 /**
+ * Extended warmup settings with undocumented SmartLead API parameters
+ * Discovered through SmartLead UI API calls (browser DevTools analysis)
+ *
+ * These parameters control feature toggles that are visible in SmartLead's UI
+ * but not documented in their official API documentation.
+ *
+ * Format: Uses camelCase to match SmartLead's UI (differs from documented snake_case)
+ */
+export interface SmartleadWarmupSettingsExtended {
+  // Documented parameters (snake_case) - from official API docs
+  warmup_enabled?: boolean;
+  total_warmup_per_day?: number;
+  daily_rampup?: number;
+  reply_rate_percentage?: number;
+  warmup_key_id?: string;
+
+  // Undocumented parameters (camelCase) - discovered from UI
+  isRampupEnabled?: boolean;           // Enables "Daily Rampup" checkbox in SmartLead UI
+  rampupValue?: number;                // Actual rampup increment value (may differ from daily_rampup)
+  warmupMinCount?: number;             // Randomization: minimum emails/day (if min=max, no randomization)
+  warmupMaxCount?: number;             // Randomization: maximum emails/day (e.g., 5-8 creates variation)
+  autoAdjustWarmup?: boolean;          // Auto-adjust warmup during campaigns (reduces volume by 7-10)
+  useCustomDomain?: boolean;           // Warmup tracking domain (open.sleadtrack.com) for better reputation
+  sendWarmupsOnlyOnWeekdays?: boolean; // Weekdays-only mode (pauses Sat/Sun for natural pattern)
+  dailyReplyLimit?: number;            // Max replies per day (calculated from replyRate × volume)
+  maxEmailPerDay?: number;             // Maximum total emails (warmup + campaigns) per day
+  replyRate?: number;                  // Reply rate percentage (0-100)
+  status?: string;                     // Warmup status ('ACTIVE', 'INACTIVE', 'PAUSED')
+  emailAccountId?: string;             // SmartLead email account ID
+}
+
+/**
  * Campaign information (from list campaigns endpoint)
  */
 export interface Campaign {
@@ -202,13 +235,17 @@ export interface SmartleadEmailAccountDetails {
   warmup_enabled: boolean;
   max_email_per_day: number;
   warmup_details?: {
+    id: number;
     status: 'ACTIVE' | 'INACTIVE' | 'PAUSED';
-    reputation_percentage: number;
-    total_sent: number;
-    spam_count: number;
-    inbox_count: number;
-    max_warmup_limit: number;
-    is_blocked: boolean;
+    reply_rate: number;
+    warmup_key_id: string;
+    total_sent_count: number;
+    total_spam_count: number;
+    warmup_max_count: number;
+    warmup_min_count: number;
+    is_warmup_blocked: boolean;
+    max_email_per_day: number;
+    warmup_reputation: string; // "100%"
   };
   custom_tracking_url?: string;
   bcc?: string;
@@ -216,4 +253,46 @@ export interface SmartleadEmailAccountDetails {
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;
+}
+
+/**
+ * Smartlead warmup update response (from POST /api/email-account/save-warmup)
+ * Contains detailed warmup configuration including undocumented advanced features
+ */
+export interface SmartleadWarmupResponse {
+  id: number;
+  email_account_id: number;
+  user_id: number;
+  status: 'ACTIVE' | 'INACTIVE';
+  max_email_per_day: number;
+  is_rampup_enabled: boolean;
+  rampup_value: number;
+  warmup_min_count: number;
+  warmup_max_count: number;
+  reply_rate: number;
+  daily_reply_limit: number;
+  warmup_reputation: number; // 0-100
+  total_sent_count: number;
+  total_spam_count: number;
+  auto_adjust_warmup: boolean;
+  use_custom_domain: boolean;
+  send_warmups_only_on_weekdays: boolean;
+  warmup_key_id: string;
+  is_warmup_blocked: boolean;
+  is_rampup_reached: boolean;
+  blocked_reason: string | null;
+  created_at: string;
+  next_trigger_time: string;
+  last_picked_time: string;
+  daily_sent_limit: number;
+  daily_sent_count: number;
+  [key: string]: unknown;
+}
+
+/**
+ * Response wrapper for warmup update endpoint
+ */
+export interface SmartleadWarmupUpdateResponse {
+  ok: boolean;
+  message: SmartleadWarmupResponse[];
 }

@@ -286,6 +286,63 @@ For email accounts connected to SmartLead, follow these recommended settings to 
 
 **Sources**: SmartLead official documentation, Reddit r/emailmarketing community discussions, and The Lead Gen Letter industry analysis (2025).
 
+#### SmartLead Advanced Features
+
+These features are enabled by default in MailEye's warmup configuration and can be adjusted per account:
+
+**Randomization** (Recommended: ✅ Enabled)
+- Varies daily warmup volume within a range (e.g., 5-8 emails instead of exactly 5)
+- Prevents robotic sending patterns that trigger spam filters
+- SmartLead recommends enabling this for all accounts
+- Example: Instead of sending exactly 5 emails every day, sends 5 one day, 7 the next, 6 the next, etc.
+
+**Weekdays Only** (Recommended: ✅ Enabled)
+- Only sends warmup emails Monday-Friday
+- Pauses on weekends for more natural sending pattern
+- Slightly slower warmup but more realistic human behavior
+- Most businesses don't send marketing emails on weekends
+
+**Auto-Adjust Warmup/Sending Ratio** (Recommended: ✅ Enabled)
+- SmartLead's intelligent algorithm that manages warmup automatically
+- **When campaigns are active**: Reduces warmup volume by 7-10 emails to maintain optimal sending/reply ratio
+- **When campaigns end**: Restores warmup to full volume
+- **Benefits**: Better inbox placement, saves time, improves campaign performance
+- Works at individual mailbox level (not campaign level)
+- Prevents over-sending which can hurt deliverability
+
+**Warmup Tracking Domain** (Recommended: ✅ Enabled)
+- Includes your custom tracking domain (open.sleadtrack.com) in warmup emails
+- Builds reputation for your tracking links BEFORE using them in campaigns
+- **This IMPROVES deliverability** - different from adding tracking to cold emails
+- Ensures tracking links don't hurt future campaign performance
+- Recommended by SmartLead for accounts using custom tracking domains
+
+**How These Features Work Together**
+
+When all four features are enabled (recommended defaults):
+1. **Randomization** makes your sending patterns look natural and non-robotic
+2. **Weekdays Only** mimics typical business email behavior
+3. **Auto-Adjust** automatically optimizes warmup during campaigns for best deliverability
+4. **Tracking Domain Warmup** ensures your tracking infrastructure has good reputation
+
+**Example Warmup Timeline with All Features Enabled:**
+```
+Monday (Day 1):    6 warmup emails (randomized from 5-8 range)
+Tuesday (Day 2):   7 warmup emails (randomized)
+Wednesday (Day 3): 11 warmup emails (ramp-up kicked in)
+Thursday (Day 4):  13 warmup emails (randomized from 10-15)
+Friday (Day 5):    15 warmup emails
+Saturday (Day 6):  0 warmup emails (weekdays-only)
+Sunday (Day 7):    0 warmup emails (weekdays-only)
+Monday (Day 8):    18 warmup emails (resumed + ramped up)
+...
+Monday (Day 15):   Campaign starts with 20 emails/day
+                   Auto-adjust reduces warmup to 10-13 emails
+                   Total: 30-33 emails/day (campaign + warmup)
+```
+
+This configuration provides the most natural, effective warmup pattern while protecting your sender reputation.
+
 ---
 
 ## Performance Monitoring
