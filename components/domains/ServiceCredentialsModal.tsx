@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, AlertCircle, Cloud, Mail, Flame, CheckCircle2 } from 'lucide-react';
 import { saveCloudflareCredentialsAction } from '@/server/cloudflare/cloudflare.actions';
 import { saveGoogleWorkspaceCredentialsAction } from '@/server/google-workspace/google-workspace.actions';
-import { saveSmartleadCredentialsAction } from '@/server/smartlead/credentials.actions';
+import { saveSmartleadLoginCredentialsAction } from '@/server/smartlead/credentials.actions';
 import { disconnectCloudflareAction } from '@/server/cloudflare/cloudflare.actions';
 import { disconnectGoogleWorkspaceAction } from '@/server/google-workspace/google-workspace.actions';
 import { disconnectSmartleadAction } from '@/server/smartlead/credentials.actions';
@@ -33,6 +33,19 @@ interface ServiceCredentialsModalProps {
   onOpenChange: (open: boolean) => void;
   service: 'cloudflare' | 'googleWorkspace' | 'smartlead' | null;
   initiallyConfigured: boolean;
+  initialValues?: {
+    cloudflare?: {
+      accountId: string;
+    };
+    googleWorkspace?: {
+      serviceAccountEmail: string;
+      adminEmail: string;
+      customerId?: string;
+    };
+    smartlead?: {
+      email?: string;
+    };
+  } | null;
 }
 
 export function ServiceCredentialsModal({
@@ -40,6 +53,7 @@ export function ServiceCredentialsModal({
   onOpenChange,
   service,
   initiallyConfigured,
+  initialValues,
 }: ServiceCredentialsModalProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -57,7 +71,8 @@ export function ServiceCredentialsModal({
   const [gwCustomerId, setGwCustomerId] = useState('');
 
   // Smartlead state
-  const [slApiKey, setSlApiKey] = useState('');
+  const [slEmail, setSlEmail] = useState('');
+  const [slPassword, setSlPassword] = useState('');
 
   const resetForm = () => {
     setCfApiToken('');
@@ -66,7 +81,8 @@ export function ServiceCredentialsModal({
     setGwPrivateKey('');
     setGwAdminEmail('');
     setGwCustomerId('');
-    setSlApiKey('');
+    setSlEmail('');
+    setSlPassword('');
     setError(null);
     setSuccess(false);
   };
@@ -77,6 +93,31 @@ export function ServiceCredentialsModal({
       resetForm();
     }
   };
+
+  // Pre-fill form fields when modal opens with existing values
+  useEffect(() => {
+    if (open && initialValues && initiallyConfigured) {
+      // Pre-fill Cloudflare fields
+      if (service === 'cloudflare' && initialValues.cloudflare) {
+        setCfAccountId(initialValues.cloudflare.accountId);
+        // API token remains empty (sensitive field)
+      }
+
+      // Pre-fill Google Workspace fields
+      if (service === 'googleWorkspace' && initialValues.googleWorkspace) {
+        setGwServiceAccountEmail(initialValues.googleWorkspace.serviceAccountEmail);
+        setGwAdminEmail(initialValues.googleWorkspace.adminEmail);
+        setGwCustomerId(initialValues.googleWorkspace.customerId || '');
+        // Private key remains empty (sensitive field)
+      }
+
+      // Pre-fill Smartlead fields
+      if (service === 'smartlead' && initialValues.smartlead) {
+        setSlEmail(initialValues.smartlead.email || '');
+        // Password remains empty (sensitive field)
+      }
+    }
+  }, [open, service, initialValues, initiallyConfigured]);
 
   const handleSaveCloudflare = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +169,10 @@ export function ServiceCredentialsModal({
     setLoading(true);
     setError(null);
 
-    const result = await saveSmartleadCredentialsAction(slApiKey.trim());
+    const result = await saveSmartleadLoginCredentialsAction(
+      slEmail.trim(),
+      slPassword.trim()
+    );
 
     if (result.success) {
       setSuccess(true);
@@ -413,21 +457,48 @@ export function ServiceCredentialsModal({
             {/* Smartlead Form */}
             {service === 'smartlead' && (
               <form onSubmit={handleSaveSmartlead} className="space-y-4">
+                <Alert className="border-blue-500/50 bg-blue-500/10">
+                  <AlertCircle className="h-4 w-4 text-blue-400" />
+                  <AlertDescription className="text-sm">
+                    Login credentials are encrypted and enable advanced warmup features like
+                    randomization, weekday-only modes, and auto-adjustment. Your API key will be
+                    automatically retrieved during login.
+                  </AlertDescription>
+                </Alert>
+
                 <div className="space-y-2">
-                  <Label htmlFor="sl-api-key">
-                    API Key <span className="text-red-500">*</span>
+                  <Label htmlFor="sl-email">
+                    Email <span className="text-red-500">*</span>
                   </Label>
                   <Input
-                    id="sl-api-key"
-                    type="password"
-                    placeholder="Your Smartlead API key"
-                    value={slApiKey}
-                    onChange={(e) => setSlApiKey(e.target.value)}
+                    id="sl-email"
+                    type="email"
+                    placeholder="your-email@domain.com"
+                    value={slEmail}
+                    onChange={(e) => setSlEmail(e.target.value)}
                     disabled={loading}
                     required
                   />
                   <p className="text-xs text-muted-foreground">
-                    Find your API key in Smartlead → Settings → API
+                    Your Smartlead account email
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="sl-password">
+                    Password <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="sl-password"
+                    type="password"
+                    placeholder="Your Smartlead password"
+                    value={slPassword}
+                    onChange={(e) => setSlPassword(e.target.value)}
+                    disabled={loading}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Your Smartlead account password (stored encrypted)
                   </p>
                 </div>
 
@@ -450,7 +521,7 @@ export function ServiceCredentialsModal({
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={loading || !slApiKey}>
+                  <Button type="submit" disabled={loading || !slEmail || !slPassword}>
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

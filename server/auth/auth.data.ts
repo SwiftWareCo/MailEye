@@ -138,17 +138,58 @@ export async function requireOnboarding(): Promise<{ needsOnboarding: boolean; u
   }
 }
 
-// Optimized function for settings page - combines user auth, onboarding check, and preferences in one call
+// Optimized function for settings page - combines user auth, onboarding check, preferences, and credentials in one call
 export async function getSettingsPageData(): Promise<{
   needsOnboarding: boolean;
   user: UserWithMetadata | null;
   preferences: { language: string; timezone: string } | null;
+  credentialStatus: { cloudflare: boolean; googleWorkspace: boolean; smartlead: boolean };
+  credentialDetailsDisplay: {
+    cloudflare?: {
+      accountId: string;
+      apiToken: string;
+      connectedAt: string;
+    };
+    googleWorkspace?: {
+      serviceAccountEmail: string;
+      adminEmail: string;
+      privateKey: string;
+      customerId?: string;
+      connectedAt: string;
+    };
+    smartlead?: {
+      apiKey: string;
+      email?: string;
+      hasLoginCredentials: boolean;
+      connectedAt: string;
+    };
+  } | null;
+  credentialDetailsEdit: {
+    cloudflare?: {
+      accountId: string;
+    };
+    googleWorkspace?: {
+      serviceAccountEmail: string;
+      adminEmail: string;
+      customerId?: string;
+    };
+    smartlead?: {
+      email?: string;
+    };
+  } | null;
 }> {
   try {
     const user = await getUserWithMetadata();
 
     if (!user) {
-      return { needsOnboarding: false, user: null, preferences: null };
+      return {
+        needsOnboarding: false,
+        user: null,
+        preferences: null,
+        credentialStatus: { cloudflare: false, googleWorkspace: false, smartlead: false },
+        credentialDetailsDisplay: null,
+        credentialDetailsEdit: null,
+      };
     }
 
     const onboardingCompleted = user.clientReadOnlyMetadata?.onboardingCompleted;
@@ -160,13 +201,36 @@ export async function getSettingsPageData(): Promise<{
       timezone: user.clientMetadata.timezone || 'UTC',
     };
 
+    // Fetch credential status, display details, and editing details in parallel
+    const {
+      getCredentialSetupStatus,
+      getCredentialDetailsForDisplay,
+      getCredentialDetailsForEditing,
+    } = await import('@/server/credentials/credentials.data');
+
+    const [credentialStatus, credentialDetailsDisplay, credentialDetailsEdit] = await Promise.all([
+      getCredentialSetupStatus(),
+      getCredentialDetailsForDisplay(),
+      getCredentialDetailsForEditing(),
+    ]);
+
     return {
       needsOnboarding,
       user,
-      preferences: preferences as { language: string; timezone: string }
+      preferences: preferences as { language: string; timezone: string },
+      credentialStatus,
+      credentialDetailsDisplay,
+      credentialDetailsEdit,
     };
   } catch (error) {
     console.error('Error getting settings page data:', error);
-    return { needsOnboarding: false, user: null, preferences: null };
+    return {
+      needsOnboarding: false,
+      user: null,
+      preferences: null,
+      credentialStatus: { cloudflare: false, googleWorkspace: false, smartlead: false },
+      credentialDetailsDisplay: null,
+      credentialDetailsEdit: null,
+    };
   }
 }

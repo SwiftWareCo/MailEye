@@ -8,6 +8,7 @@
 
 import { updateUserCredentials } from '../credentials/credentials.actions';
 import type { SmartleadCredentials } from '@/lib/types/credentials';
+import { loginToSmartlead } from '@/lib/clients/smartlead';
 
 const SMARTLEAD_BASE_URL = 'https://server.smartlead.ai/api/v1';
 
@@ -104,6 +105,87 @@ export async function saveSmartleadCredentialsAction(
     return { success: true };
   } catch (error) {
     console.error('Error saving Smartlead credentials:', error);
+    return {
+      success: false,
+      error: 'Failed to save credentials. Please try again.',
+    };
+  }
+}
+
+/**
+ * Save user's Smartlead login credentials (email + password)
+ * and obtain bearer token for advanced features
+ *
+ * This enables access to undocumented Smartlead endpoints that require
+ * bearer token authentication (like advanced warmup settings).
+ *
+ * Credentials are stored encrypted in Stack Auth serverMetadata.
+ *
+ * @param email - Smartlead account email
+ * @param password - Smartlead account password
+ */
+export async function saveSmartleadLoginCredentialsAction(
+  email: string,
+  password: string
+): Promise<{ success: boolean; error?: string; apiKey?: string }> {
+  try {
+    // Validate input
+    if (!email || email.trim().length === 0) {
+      return {
+        success: false,
+        error: 'Email is required',
+      };
+    }
+
+    if (!password || password.trim().length === 0) {
+      return {
+        success: false,
+        error: 'Password is required',
+      };
+    }
+
+    // Verify credentials by attempting login
+    let loginResponse;
+    try {
+      loginResponse = await loginToSmartlead(email, password);
+    } catch (error) {
+      console.error('Smartlead login validation failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Login failed',
+      };
+    }
+
+    // Calculate token expiry (JWT tokens typically expire in 24 hours, but we'll be conservative)
+    // Default to 23 hours from now
+    const tokenExpiresAt = new Date(Date.now() + 23 * 60 * 60 * 1000).toISOString();
+
+    // Save credentials to Stack Auth metadata (automatically encrypted)
+    const credentials: SmartleadCredentials = {
+      apiKey: loginResponse.user.api_key, // Extract API key from login response
+      email: email,
+      password: password, // Encrypted via Stack Auth
+      bearerToken: loginResponse.token,
+      tokenExpiresAt: tokenExpiresAt,
+      connectedAt: new Date().toISOString(),
+    };
+
+    const result = await updateUserCredentials({
+      smartlead: credentials,
+    });
+
+    if (!result.success) {
+      return result;
+    }
+
+    console.log('[Smartlead] User connected Smartlead account with login credentials');
+
+    return {
+      success: true,
+      apiKey: loginResponse.user.api_key,
+    };
+  } catch (error) {
+    console.error('Error saving Smartlead login credentials:', error);
     return {
       success: false,
       error: 'Failed to save credentials. Please try again.',

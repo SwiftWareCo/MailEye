@@ -14,14 +14,9 @@ import {
   getEmailAccountDetails,
   updateWarmupSettingsAdvanced,
 } from '@/lib/clients/smartlead';
-import { getSmartleadCredentials } from '@/server/credentials/credentials.data';
+import { getSmartleadCredentials, getSmartleadBearerToken } from '@/server/credentials/credentials.data';
 import { syncSmartleadWarmupToLocalDB } from '@/server/smartlead/sync-helpers';
 import type { SmartleadWarmupUpdateResponse } from '@/lib/types/smartlead';
-
-// ⚠️ TEMPORARY: Hardcoded Bearer token for testing Phase 1
-// This token WILL expire - Phase 2 will implement automatic token refresh
-// TODO: Remove this and implement token refresh mechanism in Phase 2
-const TEMP_BEARER_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImVtYWlsIjoib21hckBzd2lmdHdhcmUuY2EiLCJpZCI6MjY0NzQyLCJuYW1lIjoiT21hciBFbHNoZWhhd2kiLCJ1dWlkIjoiZTI2YmI3MzMtZGFiYS00NTYzLThiOWEtYTdmODJhNmI4MTNjIiwicm9sZSI6ImFkbWluIiwicHJvdmlkZXIiOiJhcHAiLCJ0b2tlbl92ZXJzaW9uIjowfSwiaHR0cHM6Ly9oYXN1cmEuaW8vand0L2NsYWltcyI6eyJ4LWhhc3VyYS1hbGxvd2VkLXJvbGVzIjpbInVzZXJzIl0sIngtaGFzdXJhLWRlZmF1bHQtcm9sZSI6InVzZXJzIiwieC1oYXN1cmEtdXNlci1pZCI6IjI2NDc0MiIsIngtaGFzdXJhLXVzZXItdXVpZCI6ImUyNmJiNzMzLWRhYmEtNDU2My04YjlhLWE3ZjgyYTZiODEzYyIsIngtaGFzdXJhLXVzZXItbmFtZSI6Ik9tYXIgRWxzaGVoYXdpIiwieC1oYXN1cmEtdXNlci1yb2xlIjoiYWRtaW4iLCJ4LWhhc3VyYS11c2VyLWVtYWlsIjoib21hckBzd2lmdHdhcmUuY2EiLCJ4LWhhc3VyYS10b2tlbi12ZXJzaW9uIjoiMCJ9LCJpYXQiOjE3NTkyNzI2MDV9.jNisN3GTYxGlaG7ep9eB0T6xec0J8gqPSKIl5jXFp28";
 
 interface WarmupSettings {
   warmupEnabled: boolean;
@@ -176,7 +171,6 @@ export async function updateWarmupSettingsAction(
 
     // Update warmup settings in Smartlead using advanced endpoint
     // This uses the undocumented UI endpoint that supports all warmup features
-    // PHASE 1: Using hardcoded Bearer token for testing
     if (
       settings.warmupEnabled !== undefined ||
       settings.maxEmailPerDay !== undefined ||
@@ -189,7 +183,16 @@ export async function updateWarmupSettingsAction(
       settings.autoAdjust !== undefined ||
       settings.warmupTrackingDomain !== undefined
     ) {
-      const smartleadResponse = await updateWarmupSettingsAdvanced(TEMP_BEARER_TOKEN, smartleadAccountId, {
+      // Get valid bearer token (auto-refreshes if expired)
+      const bearerToken = await getSmartleadBearerToken();
+      if (!bearerToken) {
+        return {
+          success: false,
+          error: 'Smartlead bearer token not available. Please save your Smartlead login credentials.',
+        };
+      }
+
+      const smartleadResponse = await updateWarmupSettingsAdvanced(bearerToken, smartleadAccountId, {
         warmupEnabled: settings.warmupEnabled,
         maxEmailPerDay: settings.maxEmailPerDay,
         warmupMinCount: settings.warmupMinCount,

@@ -23,16 +23,29 @@ export async function saveCloudflareCredentialsAction(
   accountId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Validate inputs
-    if (!apiToken || !accountId) {
+    // Validate accountId (always required)
+    if (!accountId || accountId.trim().length === 0) {
       return {
         success: false,
-        error: 'API token and Account ID are required',
+        error: 'Account ID is required',
       };
     }
 
+    // If apiToken is empty, get existing token (for partial updates)
+    let tokenToUse = apiToken;
+    if (!apiToken || apiToken.trim().length === 0) {
+      const existingCredentials = await getCloudflareCredentials();
+      if (!existingCredentials?.apiToken) {
+        return {
+          success: false,
+          error: 'API token is required for new connection',
+        };
+      }
+      tokenToUse = existingCredentials.apiToken;
+    }
+
     // Verify credentials by testing API call
-    const client = new Cloudflare({ apiToken });
+    const client = new Cloudflare({ apiToken: tokenToUse });
 
     // Test 1: Can we list zones?
     try {
@@ -68,7 +81,7 @@ export async function saveCloudflareCredentialsAction(
 
     // Save credentials using centralized credentials system
     const credentials: CloudflareCredentials = {
-      apiToken,
+      apiToken: tokenToUse,
       accountId,
       connectedAt: new Date().toISOString(),
     };

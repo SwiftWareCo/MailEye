@@ -6,6 +6,68 @@
  */
 
 const SMARTLEAD_BASE_URL = 'https://server.smartlead.ai/api/v1';
+const SMARTLEAD_AUTH_URL = 'https://server.smartlead.ai/api/auth';
+
+/**
+ * Smartlead login response structure
+ */
+export interface SmartleadLoginResponse {
+  user: {
+    id: number;
+    uuid: string;
+    email: string;
+    name: string;
+    role: string;
+    api_key: string;
+    [key: string]: unknown;
+  };
+  token: string; // JWT bearer token
+}
+
+/**
+ * Login to Smartlead and get bearer token
+ * Required for advanced warmup settings endpoint
+ *
+ * @param email - Smartlead account email
+ * @param password - Smartlead account password
+ * @returns Login response with bearer token
+ */
+export async function loginToSmartlead(
+  email: string,
+  password: string
+): Promise<SmartleadLoginResponse> {
+  const response = await fetch(`${SMARTLEAD_AUTH_URL}/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json, text/plain, */*',
+    },
+    body: JSON.stringify({
+      email,
+      password,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    let errorMessage = 'Login failed';
+
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.message || errorJson.error || errorMessage;
+    } catch {
+      errorMessage = errorText || errorMessage;
+    }
+
+    if (response.status === 401) {
+      throw new Error('Invalid email or password');
+    }
+
+    throw new Error(`Smartlead login failed: ${errorMessage}`);
+  }
+
+  return await response.json();
+}
 
 /**
  * Lists all campaigns in Smartlead account

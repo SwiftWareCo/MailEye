@@ -35,20 +35,39 @@ export async function saveGoogleWorkspaceCredentialsAction(
   customerId?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Validate inputs
-    if (!serviceAccountEmail || !privateKey || !adminEmail) {
+    // Validate required fields
+    if (!serviceAccountEmail || serviceAccountEmail.trim().length === 0) {
       return {
         success: false,
-        error:
-          'Service Account Email, Private Key, and Admin Email are required',
+        error: 'Service Account Email is required',
       };
+    }
+
+    if (!adminEmail || adminEmail.trim().length === 0) {
+      return {
+        success: false,
+        error: 'Admin Email is required',
+      };
+    }
+
+    // If privateKey is empty, get existing key (for partial updates)
+    let keyToUse = privateKey;
+    if (!privateKey || privateKey.trim().length === 0) {
+      const existingCredentials = await getGoogleWorkspaceCredentials();
+      if (!existingCredentials?.privateKey) {
+        return {
+          success: false,
+          error: 'Private Key is required for new connection',
+        };
+      }
+      keyToUse = existingCredentials.privateKey;
     }
 
     // Verify credentials by testing API call
     try {
       const auth = new google.auth.JWT({
         email: serviceAccountEmail,
-        key: privateKey.replace(/\\n/g, '\n'), // Handle escaped newlines
+        key: keyToUse.replace(/\\n/g, '\n'), // Handle escaped newlines
         scopes: [
           'https://www.googleapis.com/auth/admin.directory.user',
           'https://www.googleapis.com/auth/admin.directory.user.security',
@@ -106,7 +125,7 @@ export async function saveGoogleWorkspaceCredentialsAction(
     // Save credentials to Stack Auth metadata (automatically encrypted)
     const credentials: GoogleWorkspaceCredentials = {
       serviceAccountEmail,
-      privateKey,
+      privateKey: keyToUse,
       adminEmail,
       customerId,
       connectedAt: new Date().toISOString(),
