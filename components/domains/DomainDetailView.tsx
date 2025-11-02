@@ -25,12 +25,10 @@ import {
   CheckCircle2,
   Clock,
   Lock,
-  LayoutDashboard,
   Globe,
   Mail,
   Plus,
 } from 'lucide-react';
-import { OverviewTab } from './tabs/OverviewTab';
 import { DNSTab } from './tabs/DnsTab';
 import { EmailAccountsTable } from '@/components/email-accounts/EmailAccountsTable';
 import { EmailAccountCreationModal } from './EmailAccountCreationModal';
@@ -61,7 +59,7 @@ interface DomainDetailViewProps {
 
 export function DomainDetailView({
   details,
-  initialTab = 'overview',
+  initialTab = 'dns',
   onVerifyNameservers,
   onConfigureEmailDNS,
   onConfirmManualVerification,
@@ -183,9 +181,8 @@ export function DomainDetailView({
   // Determine if a tab is locked based on prerequisites
   const isTabLocked = (tab: string): boolean => {
     switch (tab) {
-      case 'overview':
       case 'dns':
-        // Overview and DNS tabs are always accessible
+        // DNS tab is always accessible
         return false;
       case 'email':
         // Email tab requires nameservers to be verified AND
@@ -284,24 +281,6 @@ export function DomainDetailView({
               </div>
             </div>
 
-            {/* Setup Progress Bar */}
-            <div>
-              <div className='flex items-center justify-between mb-2'>
-                <span className='text-sm font-medium'>Setup Progress</span>
-                <span className='text-sm font-semibold'>
-                  {setupStatus.overview.completionPercentage}%
-                </span>
-              </div>
-              <div className='w-full bg-secondary rounded-full h-2'>
-                <div
-                  className='bg-primary h-2 rounded-full transition-all'
-                  style={{
-                    width: `${setupStatus.overview.completionPercentage}%`,
-                  }}
-                />
-              </div>
-            </div>
-
             {/* Notes if present */}
             {domain.notes && (
               <div>
@@ -319,13 +298,6 @@ export function DomainDetailView({
           <CardHeader className='border-b'>
             <TabsList className='w-full justify-start'>
               <TooltipProvider>
-                <TabsTrigger value='overview'>
-                  <LayoutDashboard className='h-4 w-4 mr-2' />
-                  Overview
-                  {setupStatus.overview.isComplete &&
-                    renderTabBadge('overview')}
-                </TabsTrigger>
-
                 <TabsTrigger value='dns'>
                   <Globe className='h-4 w-4 mr-2' />
                   DNS & Nameservers
@@ -360,12 +332,6 @@ export function DomainDetailView({
             </TabsList>
           </CardHeader>
           <CardContent className='p-6'>
-            <TabsContent value='overview'>
-              <OverviewTab
-                details={details}
-                onNavigateToTab={handleNavigateToTab}
-              />
-            </TabsContent>
             <TabsContent value='dns'>
               <DNSTab
                 details={details}

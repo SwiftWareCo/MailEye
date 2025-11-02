@@ -1,6 +1,5 @@
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import { MobileNavigation } from '@/components/dashboard/MobileNavigation';
-import { WarmupNotificationWrapper } from '@/components/warmup/WarmupNotificationWrapper';
 import { getUserWithMetadata } from '@/server/auth/auth.data';
 
 export default async function DashboardLayout({
@@ -23,9 +22,6 @@ export default async function DashboardLayout({
           <div className='lg:hidden'>
             <MobileNavigation />
           </div>
-
-          {/* Warmup Notification Banner */}
-          {user && <WarmupNotificationWrapper userId={user.id} />}
 
           {/* Page Content */}
           <main className='flex-1 overflow-y-auto'>

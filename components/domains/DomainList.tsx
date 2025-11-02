@@ -25,7 +25,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { DomainStatusBadge } from './DomainStatusBadge';
-import { WarmupStatusBadge } from './WarmupStatusBadge';
 import { DomainSetupCard } from './DomainSetupCard';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { useDeleteDomain } from '@/lib/hooks/use-domains';
@@ -34,18 +33,9 @@ import type { Domain } from '@/lib/types/domain';
 import type { NameserverVerificationResult } from '@/server/domain/nameserver-verifier';
 import type { SetupCompletionStatus } from '@/lib/types/domain-details';
 
-interface DomainWarmupStatus {
-  domainId: string;
-  status: 'overdue' | 'pending' | 'complete' | 'none';
-  pendingCount: number;
-  overdueCount: number;
-  totalAccounts: number;
-}
-
 interface DomainListProps {
   userId: string;
   domains: Domain[];
-  warmupStatuses: DomainWarmupStatus[];
   setupStatuses: Map<string, SetupCompletionStatus>;
   deleteDomainAction: (domainId: string) => Promise<{ success: boolean; error?: string }>;
   verifyNameserversAction?: (domainId: string) => Promise<NameserverVerificationResult>;
@@ -54,7 +44,6 @@ interface DomainListProps {
 export function DomainList({
   userId,
   domains,
-  warmupStatuses,
   setupStatuses,
   deleteDomainAction,
 }: DomainListProps) {
@@ -63,11 +52,6 @@ export function DomainList({
 
   // Use TanStack Query mutation for delete
   const deleteMutation = useDeleteDomain(userId, deleteDomainAction);
-
-  // Helper to get warmup status for a domain
-  const getWarmupStatus = (domainId: string) => {
-    return warmupStatuses.find((s) => s.domainId === domainId);
-  };
 
   const handleViewDetails = (domainId: string) => {
     router.push(`/domains/${domainId}`);
@@ -138,18 +122,6 @@ export function DomainList({
                       {domain.domain}
                     </h3>
                     <DomainStatusBadge status={domain.verificationStatus} />
-                    {(() => {
-                      const warmupStatus = getWarmupStatus(domain.id);
-                      if (warmupStatus && warmupStatus.status !== 'none') {
-                        return (
-                          <WarmupStatusBadge
-                            status={warmupStatus.status}
-                            count={warmupStatus.status === 'overdue' ? warmupStatus.overdueCount : warmupStatus.pendingCount}
-                          />
-                        );
-                      }
-                      return null;
-                    })()}
                     {!domain.isActive && (
                       <Badge variant="outline" className="text-gray-400">
                         Inactive

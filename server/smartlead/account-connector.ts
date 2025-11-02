@@ -227,14 +227,12 @@ async function callSmartleadAPI(
     const lastName = nameParts.slice(1).join(' ') || 'Account';
 
     // Log connection attempt (without passwords for security)
-    console.log('[Smartlead] Connecting email account:', {
+    console.log('[Smartlead Connection] Starting connection with config:', {
       email: credentials.email,
-      smtpHost: credentials.smtp.host,
-      smtpPort: credentials.smtp.port,
-      imapHost: credentials.imap.host,
-      imapPort: credentials.imap.port,
       warmupEnabled: config.warmupEnabled,
-      
+      maxEmailPerDay: config.maxEmailPerDay,
+      dailyRampup: config.dailyRampup,
+      replyRatePercentage: config.replyRatePercentage,
     });
 
     // Call Smartlead API with correct endpoint and fields
@@ -254,6 +252,14 @@ async function callSmartleadAPI(
       maxEmailPerDay: config.maxEmailPerDay,
       dailyRampup: config.dailyRampup,
       replyRatePercentage: config.replyRatePercentage,
+    });
+
+    // Log successful API response
+    console.log('[Smartlead Connection] API response received:', {
+      emailAccountId: response.emailAccountId,
+      email: credentials.email,
+      ok: response.ok,
+      warmupKey: response.warmupKey,
     });
 
     // Convert API response to SmartleadAccountData for database storage
@@ -470,6 +476,12 @@ export async function connectEmailAccountToSmartlead(
     // Note: We don't call syncSmartleadWarmupToLocalDB here because the account
     // creation response doesn't include all warmup details. The sync will happen
     // when we fetch account details or update warmup settings.
+    console.log('[Smartlead Connection] Setting local warmup status:', {
+      emailAccountId,
+      warmupEnabled,
+      maxEmailPerDay,
+    });
+
     if (warmupEnabled) {
       await updateEmailAccountStatus(emailAccountId, 'warming');
       await updateEmailAccountWarmupMetrics(emailAccountId, {
@@ -477,9 +489,17 @@ export async function connectEmailAccountToSmartlead(
         warmupStartedAt: new Date(),
         dailyEmailLimit: maxEmailPerDay,
       });
+      console.log('[Smartlead Connection] Warmup status set to "warming" and in_progress');
     } else {
       await updateEmailAccountStatus(emailAccountId, 'active');
+      console.log('[Smartlead Connection] Warmup disabled - account status set to "active"');
     }
+
+    console.log('[Smartlead Connection] Connection completed successfully:', {
+      smartleadAccountId: apiResult.data.emailAccountId,
+      warmupKey: apiResult.data.warmupKey,
+      warmupEnabled,
+    });
 
     return {
       success: true,

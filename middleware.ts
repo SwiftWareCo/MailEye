@@ -1,31 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stackServerApp } from "./stack/server";
 
-export async function middleware(request: NextRequest) {
-  const user = await stackServerApp.getUser();
-  const { pathname } = request.nextUrl;
+/**
+ * Middleware to check user authentication
+ *
+ * Avoids making API calls to Stack Auth by checking for session tokens in cookies.
+ * This eliminates the loading screen that was occurring from the /api/v1/users/me call.
+ *
+ * Onboarding checks are deferred to individual pages where they can fetch full user data.
+ */
+export function middleware(request: NextRequest) {
+  // Check for Stack Auth session token in cookies
+  // Stack Auth stores the access token in: stack-access-[project-id] cookie
+  const hasAuthToken = request.cookies.getAll().some(cookie =>
+    cookie.name.includes('stack-access') ||
+    cookie.name.includes('stack-refresh')
+  );
 
-  // Handle onboarding route specifically
-  if (pathname.startsWith('/onboarding')) {
-    // If user is not authenticated, redirect to sign-in
-    if (!user) {
-      return NextResponse.redirect(new URL('/handler/sign-in', request.url));
-    }
-
-    // If user has already completed onboarding, redirect to dashboard
-    if (user.clientReadOnlyMetadata?.onboardingCompleted) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-
-    // Allow access to onboarding for authenticated users who haven't completed it
-    return NextResponse.next();
-  }
-
-  // For other protected routes, check authentication
-  if (!user) {
+  // For protected routes (excluding auth pages), check authentication
+  if (!hasAuthToken) {
     return NextResponse.redirect(new URL('/handler/sign-in', request.url));
   }
 
+  // Allow authenticated users to proceed
+  // Onboarding checks will be handled by individual pages via requireOnboarding()
   return NextResponse.next();
 }
 

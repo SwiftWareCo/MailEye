@@ -18,7 +18,6 @@ import { getCredentialSetupStatus } from '@/server/credentials/credentials.data'
 import {
   syncCloudflareZonesToDatabase,
 } from '@/server/cloudflare/cloudflare.actions';
-import { getDomainsWarmupStatus } from '@/server/warmup/warmup.data';
 import { getDomainSetupStatuses } from '@/server/domain/domain-details.data';
 
 export default async function DomainsPage() {
@@ -45,9 +44,6 @@ export default async function DomainsPage() {
   // Fetch user's domains from database (now includes synced zones)
   const domains = await getUserDomains(user.id);
 
-  // Fetch warmup status for all domains
-  const warmupStatuses = await getDomainsWarmupStatus(user.id);
-
   // Fetch setup status for all domains
   const setupStatuses = await getDomainSetupStatuses(
     domains.map((d) => d.id),
@@ -63,7 +59,6 @@ export default async function DomainsPage() {
     <DomainsContent
       userId={user.id}
       initialDomains={domains}
-      warmupStatuses={warmupStatuses}
       setupStatuses={setupStatuses}
       credentialStatus={credentialStatus}
       deleteDomainAction={boundDeleteDomain}

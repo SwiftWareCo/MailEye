@@ -156,7 +156,7 @@ export async function connectEmailAccount(
         imap_port: accountData.imapPort,
 
         // Warmup configuration (documented parameters only)
-        warmup_enabled: accountData.warmupEnabled ?? false,
+        warmup_enabled: accountData.warmupEnabled ?? true, // Default to true for best practices
         max_email_per_day: accountData.maxEmailPerDay ?? 100,
         total_warmup_per_day: accountData.totalWarmupPerDay ?? null,
         daily_rampup: accountData.dailyRampup ?? null,
